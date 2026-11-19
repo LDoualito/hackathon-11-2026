@@ -32,6 +32,9 @@ export async function applyWhenIsRight(
 	callback: TsAST.Expression,
 	resultType: GoAST.Type | GoAST.TypeReference,
 	context: BuildContext,
+	// whenIsRightOtherwise : la fonction du cas d'échec, qui reçoit l'Either entier.
+	// Absente (whenIsRight) : l'entrée est renvoyée inchangée.
+	otherwiseCallback?: TsAST.Expression,
 ) {
 	const accumulator = GoAST.createShortVariableDeclarationStatement({
 		identifier: context.generateIdentifier(),
@@ -58,6 +61,21 @@ export async function applyWhenIsRight(
 
 	const { before, result } = DEither.unwrapRight(inlined);
 
+	// Branche « échec » : l'entrée inchangée (whenIsRight) ou la 2e fonction (whenIsRightOtherwise).
+	let elseStatements: GoAST.Statement[] = [createSimpleAssignment(output.identifier, accumulator.identifier)];
+
+	if (otherwiseCallback) {
+		const otherwise = await inlineCallback(otherwiseCallback, accumulator.identifier, context);
+
+		if (DEither.isLeft(otherwise)) {
+			return otherwise;
+		}
+
+		const unwrapped = DEither.unwrapRight(otherwise);
+
+		elseStatements = [...unwrapped.before, createSimpleAssignment(output.identifier, unwrapped.result)];
+	}
+
 	return DEither.right("when-is-right", {
 		before: [
 			accumulator,
@@ -71,7 +89,7 @@ export async function applyWhenIsRight(
 					statements: DArray.push(before, createSimpleAssignment(output.identifier, result)),
 				}),
 				elseBranch: GoAST.createBlockStatement({
-					statements: [createSimpleAssignment(output.identifier, accumulator.identifier)],
+					statements: elseStatements,
 				}),
 			}),
 		] as GoAST.Statement[],
@@ -121,6 +139,59 @@ export async function whenIsRightExpressionHandler(
 	}
 
 	const applied = await applyWhenIsRight(input.result, callback, resultType.result, context);
+
+	if (DEither.isLeft(applied)) {
+		return applied;
+	}
+
+	const { before, identifier } = DEither.unwrapRight(applied);
+
+	return context.success({
+		before: DArray.concat(resultType.before, input.before, before),
+		result: identifier,
+	});
+}
+
+/**
+ * `DEither.whenIsRightOtherwise(entrée, fonctionSucces, fonctionEchec)`.
+ * Même code en ligne que whenIsRight, mais la branche `else` appelle la 2e fonction
+ * avec l'Either entier, comme DuploJS : `return otherwiseFunction(input)`.
+ */
+export async function whenIsRightOtherwiseExpressionHandler(
+	node: TsAST.Node,
+	context: BuildContext,
+): Promise<ReturnType<Transformer<GoAST.Expression>["transformer"]>> {
+	if (!TsAST.isCallExpression(node)) {
+		return context.error(node, "either-when-is-right-otherwise-used-as-value");
+	}
+
+	if (node.arguments.length === 2) {
+		// Forme curryfiée hors d'un pipe : il faudrait une fonction anonyme (décision n°5).
+		return context.error(node, "either-when-is-right-otherwise-curried-outside-pipe");
+	}
+
+	const [inputNode, callback, otherwiseCallback] = node.arguments;
+
+	if (!inputNode || !callback || !otherwiseCallback || node.arguments.length !== 3) {
+		return context.error(node, "either-when-is-right-otherwise-expects-three-arguments");
+	}
+
+	const resultType = await transformTypeOfExpression(node, context);
+
+	if (DEither.isLeft(resultType)) {
+		return resultType;
+	}
+
+	const input = await DCommon.asyncPipe(
+		context.transform(inputNode, expressionTransformers.value),
+		DEither.unwrapRight,
+	);
+
+	if (DEither.isLeft(input)) {
+		return input;
+	}
+
+	const applied = await applyWhenIsRight(input.result, callback, resultType.result, context, otherwiseCallback);
 
 	if (DEither.isLeft(applied)) {
 		return applied;

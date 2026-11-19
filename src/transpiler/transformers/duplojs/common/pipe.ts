@@ -9,10 +9,21 @@ import { expressionTransformers } from "../../expression";
 import { transformReturnTypeOfFunction } from "../../type/ofExpression";
 import { inlineCallback } from "../../common/inlineCallback";
 import { applyWhenIsRight } from "../either/whenIsRight";
+import { applyMap } from "../array/map";
 
-/** Vrai si `step` est l'appel curryfié `DEither.whenIsRight(fonction)`. */
-async function getCurriedWhenIsRightCallback(step: TsAST.Expression, context: BuildContext) {
-	if (!TsAST.isCallExpression(step) || step.arguments.length !== 1) {
+type CurriedStep =
+	| { kind: "whenIsRight"; callback: TsAST.Expression }
+	| { kind: "whenIsRightOtherwise"; callback: TsAST.Expression; otherwiseCallback: TsAST.Expression }
+	| { kind: "map"; callback: TsAST.Expression };
+
+/**
+ * Reconnaît une étape DuploJS curryfiée : `DEither.whenIsRight(f)`,
+ * `DEither.whenIsRightOtherwise(f, g)` ou `DArray.map(f)`.
+ * Ces formes renvoient une fonction en TS ; ici on les applique directement
+ * à la valeur courante, sans fonction anonyme.
+ */
+async function getCurriedStep(step: TsAST.Expression, context: BuildContext): Promise<CurriedStep | undefined> {
+	if (!TsAST.isCallExpression(step)) {
 		return undefined;
 	}
 
@@ -22,16 +33,37 @@ async function getCurriedWhenIsRightCallback(step: TsAST.Expression, context: Bu
 		return undefined;
 	}
 
-	const moduleReference = await DCommon.asyncPipe(
+	const [first, second] = step.arguments;
+
+	const eitherReference = await DCommon.asyncPipe(
 		context.resolveReferenceModule(reference, "@duplojs/lang", /^dist\/either\//),
 		DEither.unwrapRight,
 	);
 
-	if (DEither.isLeft(moduleReference) || moduleReference.symbol.name !== "whenIsRight") {
+	if (!DEither.isLeft(eitherReference)) {
+		const name = eitherReference.symbol.name;
+
+		if (name === "whenIsRight" && first && step.arguments.length === 1) {
+			return { kind: "whenIsRight", callback: first };
+		}
+
+		if (name === "whenIsRightOtherwise" && first && second && step.arguments.length === 2) {
+			return { kind: "whenIsRightOtherwise", callback: first, otherwiseCallback: second };
+		}
+
 		return undefined;
 	}
 
-	return DArray.first(step.arguments);
+	const arrayReference = await DCommon.asyncPipe(
+		context.resolveReferenceModule(reference, "@duplojs/lang", /^dist\/array\//),
+		DEither.unwrapRight,
+	);
+
+	if (!DEither.isLeft(arrayReference) && arrayReference.symbol.name === "map" && first && step.arguments.length === 1) {
+		return { kind: "map", callback: first };
+	}
+
+	return undefined;
 }
 
 /**
@@ -45,8 +77,8 @@ async function getCurriedWhenIsRightCallback(step: TsAST.Expression, context: Bu
  *   ...étape 2 recopiée en ligne avec Generated_2  -> Generated_3
  *   -> résultat : Generated_3
  *
- * Une étape `DEither.whenIsRight(fonction)` (forme curryfiée) réutilise le cœur
- * de whenIsRight au lieu de fabriquer une fonction anonyme.
+ * Une étape curryfiée (`whenIsRight(f)`, `whenIsRightOtherwise(f, g)`, `DArray.map(f)`)
+ * réutilise le cœur de la fonction correspondante au lieu de fabriquer une fonction anonyme.
  */
 export async function pipeExpressionHandler(
 	node: TsAST.Node,
@@ -80,17 +112,25 @@ export async function pipeExpressionHandler(
 	let current: GoAST.Identifier = inputStatement.identifier;
 
 	for (const step of steps) {
-		const whenIsRightCallback = await getCurriedWhenIsRightCallback(step, context);
+		const curriedStep = await getCurriedStep(step, context);
 
-		if (whenIsRightCallback) {
-			// Étape `whenIsRight(fonction)` : type du résultat = ce que renvoie la fonction curryfiée.
+		if (curriedStep) {
+			// Étape curryfiée : type du résultat = ce que renvoie la fonction produite par l'étape.
 			const resultType = await transformReturnTypeOfFunction(step, context);
 
 			if (DEither.isLeft(resultType)) {
 				return resultType;
 			}
 
-			const applied = await applyWhenIsRight(current, whenIsRightCallback, resultType.result, context);
+			const applied = curriedStep.kind === "map"
+				? await applyMap(current, curriedStep.callback, resultType.result, context)
+				: await applyWhenIsRight(
+					current,
+					curriedStep.callback,
+					resultType.result,
+					context,
+					curriedStep.kind === "whenIsRightOtherwise" ? curriedStep.otherwiseCallback : undefined,
+				);
 
 			if (DEither.isLeft(applied)) {
 				return applied;

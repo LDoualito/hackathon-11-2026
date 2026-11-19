@@ -13,7 +13,7 @@ import { eitherLeftDependency, leftFunctionIdentifier } from "./left/sharedDepen
 import { matchInformationExpressionHandler } from "./matchInformation";
 import { rightPipeExpressionHandler } from "./rightPipe";
 import { isRightExpressionHandler } from "./isRight";
-import { whenIsRightExpressionHandler } from "./whenIsRight";
+import { whenIsRightExpressionHandler, whenIsRightOtherwiseExpressionHandler } from "./whenIsRight";
 import { eitherTypeHandler, resolveEitherTypeMember, type EitherTypeMember } from "./eitherType";
 
 export const duploJSEitherDeclarationTransformer: Transformer<GoAST.Declaration> = createTransformer(
@@ -98,6 +98,13 @@ export const duploJSEitherExpressionTransformer: Transformer<GoAST.Expression> =
 			DPattern.match(
 				DCommon.equal("isRight"),
 				() => isRightExpressionHandler(
+					node,
+					context,
+				),
+			),
+			DPattern.match(
+				DCommon.equal("whenIsRightOtherwise"),
+				() => whenIsRightOtherwiseExpressionHandler(
 					node,
 					context,
 				),

@@ -6,6 +6,7 @@ import { GoAST } from "@go";
 import { TsAST } from "@typescript";
 import { type BuildContext } from "../../../context/build";
 import { coalescingDependency, coalescingFunctionIdentifier } from "./sharedDependency";
+import { mapExpressionHandler } from "./map";
 
 /**
  * `DArray.coalescing`.
@@ -59,6 +60,10 @@ export const duploJSArrayExpressionTransformer: Transformer<GoAST.Expression> = 
 			DPattern.match(
 				DCommon.equal("coalescing"),
 				() => coalescingExpressionHandler(node, context),
+			),
+			DPattern.match(
+				DCommon.equal("map"),
+				() => mapExpressionHandler(node, context),
 			),
 			DPattern.otherwise(
 				() => context.error(node, "array-function-not-supported-yet"),
