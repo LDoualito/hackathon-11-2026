@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rag",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "--quiet", "--with", "numpy", "python", "hackathon-tools/rag/serve.py"],
+      "port": 8765
+    }
+  ]
+}

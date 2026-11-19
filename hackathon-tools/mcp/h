@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec uv run --quiet --with numpy python "$(dirname "${BASH_SOURCE[0]}")/cli.py" "$@"

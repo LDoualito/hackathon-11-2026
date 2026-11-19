@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "hackathon": {
+      "command": "uv",
+      "args": ["run", "--quiet", "--with", "numpy", "--with", "mcp<2", "python", "hackathon-tools/mcp/server.py"]
+    }
+  }
+}

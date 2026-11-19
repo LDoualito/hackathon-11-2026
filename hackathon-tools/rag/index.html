@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas DuploJS vers Go</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #eaeff5; --panel: #ffffff; --sunk: #f3f6fa; --line: #d3dce7;
+  --ink: #0f2540; --ink-2: #44566e; --ink-3: #7a8a9f;
+  --ts: #3178c6; --go: #00add8; --focus: #3178c6; --dim: #c5cfdb;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948; --other: #8f9aa8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0b1522; --panel: #13233a; --sunk: #0f1c2f; --line: #25395a;
+    --ink: #e8eef6; --ink-2: #b3c1d3; --ink-3: #7f91a8;
+    --ts: #5a9be0; --go: #2cc3e8; --focus: #7db3ee; --dim: #2d4160;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; --s8: #e66767; --other: #6f7f95;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, pre, .mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+.app { display: grid; grid-template-columns: 290px minmax(0, 1fr); height: 100%; }
+
+.rail { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 18px; }
+.brand { font-size: 21px; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; margin: 0; }
+.brand small { display: block; font-size: 13px; font-weight: 500; color: var(--ink-3); margin-top: 4px; letter-spacing: 0; }
+.search { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--sunk); }
+.views { display: flex; flex-direction: column; gap: 4px; }
+.views button { text-align: left; border: 0; background: none; padding: 9px 12px; border-radius: 10px; font-weight: 600; color: var(--ink-2); display: flex; justify-content: space-between; }
+.views button:hover { background: var(--sunk); }
+.views button[aria-current="true"] { background: var(--ink); color: var(--panel); }
+.views span { font-weight: 500; opacity: .7; }
+.facet { border-top: 1px solid var(--line); padding-top: 12px; }
+.facet summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--ink-2); list-style: none; display: flex; justify-content: space-between; }
+.facet summary::-webkit-details-marker { display: none; }
+.facet summary em { font-style: normal; font-weight: 500; color: var(--ts); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 3px 10px; font-size: 13px; color: var(--ink-2); }
+.chip b { font-weight: 500; color: var(--ink-3); margin-left: 5px; }
+.chip[aria-pressed="true"] { background: var(--ts); border-color: var(--ts); color: #fff; }
+.chip[aria-pressed="true"] b { color: #fff; opacity: .8; }
+.link { border: 0; background: none; padding: 0; color: var(--ts); font-weight: 600; text-align: left; }
+.link:hover { text-decoration: underline; }
+
+main { overflow: auto; padding: 26px 30px 60px; position: relative; }
+main.flush { padding: 0; overflow: hidden; }
+h2 { font-size: 26px; line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.015em; }
+h3 { font-size: 16px; margin: 0 0 8px; }
+.lede { color: var(--ink-2); max-width: 68ch; margin: 0 0 22px; }
+
+.route { position: relative; display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 0; margin: 6px 0 26px; padding-top: 22px; }
+.route::before { content: ""; position: absolute; left: 4%; right: 4%; top: 41px; height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--ts), var(--go)); }
+.route .ends { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.stop { position: relative; border: 0; background: none; padding: 0 2px; display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
+.stop i { width: 38px; height: 38px; border-radius: 50%; background: var(--panel); border: 3px solid var(--ts); display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 14px; transition: transform .15s; }
+.stop.done i { background: var(--ts); color: #fff; }
+.stop[aria-current="true"] i { transform: scale(1.28); background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.stop span { font-size: 12px; line-height: 1.25; color: var(--ink-2); text-align: center; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.stop:hover i { transform: scale(1.12); }
+
+.cols { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 22px; align-items: start; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.card + .card { margin-top: 16px; }
+.state { display: inline-block; font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--sunk); color: var(--ink-2); margin-left: 10px; vertical-align: middle; }
+.state.done { background: var(--ts); color: #fff; }
+ul.plain { margin: 0 0 4px; padding-left: 18px; }
+.apis { display: flex; flex-wrap: wrap; gap: 6px; }
+.api { border: 1px solid var(--line); background: var(--sunk); border-radius: 8px; padding: 3px 9px; font-size: 13px; }
+.api:hover { border-color: var(--ts); color: var(--ts); }
+details.file { border-top: 1px solid var(--line); padding: 8px 0; }
+details.file summary { cursor: pointer; font-weight: 600; }
+pre { white-space: pre-wrap; word-break: break-word; background: var(--sunk); border-radius: 10px; padding: 12px 14px; font-size: 12.5px; line-height: 1.55; margin: 8px 0 0; tab-size: 2; }
+
+.group { border-top: 1px solid var(--line); padding: 12px 0 4px; }
+.group:first-of-type { border-top: 0; padding-top: 0; }
+.group header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.group header p { margin: 0; font-size: 13px; color: var(--ink-3); }
+.item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: start; width: 100%; text-align: left; border: 0; background: none; padding: 7px 8px; border-radius: 8px; }
+.item:hover { background: var(--sunk); }
+.item i { width: 9px; height: 9px; border-radius: 50%; margin-top: 7px; }
+.item strong { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.item small { display: block; color: var(--ink-3); font-size: 12.5px; overflow-wrap: anywhere; }
+.item em { font-style: normal; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; padding-top: 3px; }
+.empty { color: var(--ink-3); padding: 8px; }
+
+.split { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 22px; align-items: start; }
+.list { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; position: sticky; top: 0; max-height: calc(100vh - 60px); display: flex; flex-direction: column; gap: 10px; }
+.list .scroll { overflow: auto; }
+.row { display: flex; justify-content: space-between; gap: 8px; width: 100%; border: 0; background: none; padding: 6px 8px; border-radius: 8px; text-align: left; font-size: 13.5px; }
+.row:hover { background: var(--sunk); }
+.row[aria-current="true"] { background: var(--ink); color: var(--panel); }
+.row span { color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.row[aria-current="true"] span { color: inherit; opacity: .75; }
+.list select, .list input[type="search"] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); }
+.title-mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 24px; letter-spacing: -0.02em; }
+
+.mapbar { position: absolute; left: 16px; top: 16px; right: 16px; display: flex; gap: 10px; align-items: flex-start; pointer-events: none; }
+.mapbar > * { pointer-events: auto; }
+.legend { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; font-size: 13px; max-height: 70vh; overflow: auto; }
+.legend select { width: 100%; margin-bottom: 6px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); }
+.legend button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 3px 6px; border-radius: 6px; color: var(--ink-2); text-align: left; }
+.legend button.off { opacity: .35; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.legend span { margin-left: auto; padding-left: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.banner { background: var(--ink); color: var(--panel); border-radius: 12px; padding: 8px 14px; font-size: 13.5px; display: flex; gap: 12px; align-items: center; }
+.banner button { border: 0; background: none; color: inherit; text-decoration: underline; padding: 0; }
+canvas { width: 100%; height: 100%; display: block; background: var(--panel); cursor: grab; }
+#tip { position: absolute; pointer-events: none; display: none; max-width: 380px; background: var(--ink); color: var(--panel); border-radius: 8px; padding: 7px 10px; font-size: 13px; z-index: 5; }
+#tip small { display: block; opacity: .75; overflow-wrap: anywhere; }
+
+.reader { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 92vw); background: var(--panel); border-left: 1px solid var(--line); box-shadow: -18px 0 40px rgba(15, 37, 64, .18); padding: 20px 24px 40px; overflow: auto; transform: translateX(105%); transition: transform .18s ease-out; z-index: 10; }
+.reader.open { transform: none; }
+.reader .bar { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.reader h3 { font-size: 19px; line-height: 1.25; overflow-wrap: anywhere; }
+.where { color: var(--ink-3); font-size: 13px; overflow-wrap: anywhere; margin: 0 0 10px; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: 13.5px; }
+.btn:hover { border-color: var(--ts); color: var(--ts); }
+@media (prefers-reduced-motion: reduce) { .reader, .stop i { transition: none; } }
+@media (max-width: 1050px) {
+  .app { grid-template-columns: 1fr; height: auto; }
+  .rail { border-right: 0; border-bottom: 1px solid var(--line); }
+  main { overflow: visible; padding: 20px 16px 50px; }
+  main.flush { height: 80vh; }
+  .cols, .split { grid-template-columns: 1fr; }
+  .list { position: static; max-height: 50vh; }
+  .route { grid-template-columns: repeat(11, 64px); overflow-x: auto; }
+  .route::before { left: 30px; right: auto; width: 640px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <h1 class="brand">Atlas DuploJS vers Go<small id="total"></small></h1>
+    <input class="search" id="query" type="search" placeholder="Poser une question, puis Entrée" aria-label="Recherche par le sens">
+    <div class="views" id="views"></div>
+    <div id="facets"></div>
+    <button class="link" id="clear">Retirer tous les filtres</button>
+  </nav>
+  <main id="view"></main>
+</div>
+<aside class="reader" id="reader" aria-label="Lecture d'un extrait"></aside>
+<div id="tip"></div>
+<script>
+const SLOTS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"];
+const NAMES = {
+  source: { notes: "Notes de recherche", boilerplate: "Boilerplate du hackathon", ecosystem: "Monorepo DuploJS", "typescript-go": "TypeScript en Go (Microsoft)" },
+  kind: { note: "Note de recherche", doc: "Documentation", code: "Code source", test: "Test", skill: "Skill pour agents", exercise: "Exercice" },
+  family: { valeurs: "Valeurs", unions: "Unions", fonctions: "Fonctions", "forme-appel": "Forme d'appel", flux: "Flux de contrôle", async: "Asynchrone", effets: "Effets et structure", architecture: "Architecture", aucune: "Sans famille" },
+  package: {},
+};
+const FACETS = [["source", "Provenance"], ["kind", "Type de contenu"], ["family", "Famille de problème"], ["package", "Paquet"]];
+const KIND_COLOR = { note: "--s2", doc: "--s3", code: "--s1", test: "--s7", skill: "--s4", exercise: "--s5" };
+const GROUPS = [
+  ["notes", "Notes de recherche", "Ce que la recherche a établi, avec le pourquoi."],
+  ["doc", "Sa page de documentation", "La page officielle de cette fonction, et elle seule."],
+  ["source", "Son code source", "Là où elle est déclarée dans la bibliothèque."],
+  ["tests", "Ses tests", "Le fichier de tests qui lui est dédié."],
+  ["concepts", "Citée dans d'autres pages et guides", "Exemples d'autres fonctions, concepts et skills qui l'appellent."],
+  ["usages", "Appelée dans le code de l'écosystème", "Usages réels hors de la bibliothèque."],
+  ["otherTests", "Appelée dans d'autres tests", "Tests d'autres fonctions qui s'en servent."],
+];
+const state = {
+  chunks: [], matrix: null, api: [], view: "exercises", exercise: "01", apiName: null,
+  filters: { source: new Set(), kind: new Set(), family: new Set(), package: new Set() },
+  expanded: new Set(), results: null, query: "", highlight: null, selected: null,
+  apiText: "", apiNamespace: "", apiOnlyExercises: true,
+  colorBy: "source", hidden: new Set(), categories: [], zoom: { x: 0, y: 0, k: 1 },
+};
+const view = document.getElementById("view");
+const reader = document.getElementById("reader");
+const tip = document.getElementById("tip");
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const esc = (text) => String(text).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char]));
+const label = (facet, value) => NAMES[facet][value] ?? value;
+const valuesOf = (chunk, facet) => (facet === "family" ? chunk.families : [chunk[facet]]);
+const pass = (chunk) => FACETS.every(([facet]) => state.filters[facet].size === 0 || valuesOf(chunk, facet).some((value) => state.filters[facet].has(value)));
+const shortTitle = (chunk) => chunk.title.split(" › ").pop();
+
+function itemHtml(id, score) {
+  const chunk = state.chunks[id];
+  const scoreHtml = score === undefined ? "" : `<em>${score.toFixed(2)}</em>`;
+  return `<button class="item" data-chunk="${id}"><i style="background:var(${KIND_COLOR[chunk.kind]})"></i>
+    <span><strong>${esc(shortTitle(chunk))}</strong><small>${esc(label("kind", chunk.kind))} — ${esc(chunk.path)}:${chunk.line}</small></span>${scoreHtml}</button>`;
+}
+
+function listHtml(key, entries, initial) {
+  const kept = entries.filter(([id]) => pass(state.chunks[id]));
+  if (entries.length === 0) return `<p class="empty">Rien dans la base pour cette rubrique.</p>`;
+  if (kept.length === 0) return `<p class="empty">${entries.length} extraits masqués par les filtres actuels.</p>`;
+  const open = state.expanded.has(key);
+  const shown = open ? kept : kept.slice(0, initial);
+  const more = kept.length > initial ? `<button class="link" data-more="${esc(key)}">${open ? "Réduire" : `Voir les ${kept.length}`}</button>` : "";
+  return shown.map(([id, score]) => itemHtml(id, score)).join("") + more;
+}
+
+function renderRail() {
+  document.getElementById("total").textContent = `${state.chunks.filter(pass).length} extraits sur ${state.chunks.length}`;
+  const tabs = [["exercises", "Exercices", "11"], ["api", "Fonctions DuploJS", state.api.length], ["map", "Carte", ""]];
+  if (state.results) tabs.push(["results", "Résultats de recherche", state.results.filter(([id]) => pass(state.chunks[id])).length]);
+  document.getElementById("views").innerHTML = tabs.map(([key, text, count]) =>
+    `<button data-view="${key}" aria-current="${state.view === key}">${text}<span>${count}</span></button>`).join("");
+  document.getElementById("facets").innerHTML = FACETS.map(([facet, title]) => {
+    const counts = new Map();
+    for (const chunk of state.chunks) for (const value of valuesOf(chunk, facet)) counts.set(value, (counts.get(value) ?? 0) + 1);
+    const chips = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([value, count]) =>
+      `<button class="chip" data-facet="${facet}" data-value="${esc(value)}" aria-pressed="${state.filters[facet].has(value)}">${esc(label(facet, value))}<b>${count}</b></button>`).join("");
+    const active = state.filters[facet].size;
+    return `<details class="facet" ${facet !== "package" || active ? "open" : ""}><summary>${title}<em>${active ? `${active} choisi${active > 1 ? "s" : ""}` : ""}</em></summary><div class="chips">${chips}</div></details>`;
+  }).join("");
+}
+
+function renderExercises() {
+  const cards = state.matrix.exercises;
+  const card = cards.find((entry) => entry.name === state.exercise);
+  const stops = cards.map((entry) => `<button class="stop ${entry.solved ? "done" : ""}" data-exercise="${entry.name}" aria-current="${entry.name === card.name}">
+    <i>${entry.name}</i><span>${esc(entry.problems[0] ?? "")}</span></button>`).join("");
+  const byFamily = [...Object.keys(state.matrix.families), "aucune"].map((family) => [family, card.related.filter(([id]) => state.chunks[id].family === family)])
+    .filter(([, entries]) => entries.some(([id]) => pass(state.chunks[id])));
+  const knowledge = byFamily.map(([family, entries]) => `<section class="group"><header><h3>${esc(label("family", family))}</h3>
+    <p>${entries.filter(([id]) => pass(state.chunks[id])).length} extraits</p></header>${listHtml(`ex-${card.name}-${family}`, entries, 4)}</section>`).join("");
+  const files = Object.entries(card.code).map(([name, text]) => `<details class="file" ${name === "index.ts" ? "open" : ""}><summary class="mono">${esc(name)}</summary><pre>${esc(text)}</pre></details>`).join("");
+  view.className = "";
+  view.innerHTML = `<h2>Les onze exercices</h2>
+    <p class="lede">Chaque exercice ajoute une difficulté de traduction. Choisissez-en un pour voir son énoncé, son code et ce que la base sait d'utile pour le résoudre.</p>
+    <div class="route"><div class="ends"><span>TypeScript</span><span>Go</span></div>${stops}</div>
+    <div class="cols"><div>
+      <div class="card"><h3>Exercice ${card.name}<span class="state ${card.solved ? "done" : ""}">${card.solved ? "Résolu dans le boilerplate" : "À faire"}</span></h3>
+        <p class="lede" style="margin-bottom:8px">Ce qu'il demande de traduire :</p><ul class="plain">${card.problems.map((problem) => `<li>${esc(problem)}</li>`).join("")}</ul></div>
+      <div class="card"><h3>Fonctions DuploJS utilisées</h3><div class="apis">${card.apis.map((name) => `<button class="api mono" data-api="${esc(name)}">${esc(name)}</button>`).join("")}</div></div>
+      <div class="card"><h3>Code de l'exercice</h3>${files}
+        <details class="file"><summary>Énoncé complet</summary><pre>${esc(card.readme)}</pre></details></div>
+    </div><div class="card"><header style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h3>Ce qu'il faut savoir, par famille de problème</h3>
+      <button class="btn" data-show="exercise">Voir sur la carte</button></header>
+      ${knowledge || `<p class="empty">Aucun extrait proche avec les filtres actuels.</p>`}</div></div>`;
+}
+
+function apiVisible(entry) {
+  if (state.apiOnlyExercises && entry.exercises.length === 0) return false;
+  if (state.apiNamespace && entry.namespace !== state.apiNamespace) return false;
+  return entry.name.toLowerCase().includes(state.apiText.toLowerCase());
+}
+
+function renderApi() {
+  const namespaces = [...new Set(state.api.map((entry) => entry.namespace))].sort();
+  const visible = state.api.filter(apiVisible);
+  const entry = state.api.find((candidate) => candidate.name === state.apiName) ?? visible[0];
+  const rows = visible.slice(0, 400).map((candidate) => `<button class="row mono" data-api="${esc(candidate.name)}" aria-current="${entry && candidate.name === entry.name}">${esc(candidate.name)}
+    <span>${candidate.exercises.length ? `${candidate.exercises.length} ex.` : `${candidate.uses} usages`}</span></button>`).join("");
+  const detail = entry ? `<h2 class="title-mono">${esc(entry.name)}</h2>
+    <p class="lede">${entry.exercises.length ? `Utilisée dans ${entry.exercises.map((name) => `<button class="link" data-exercise="${name}">l'exercice ${name}</button>`).join(", ")}.` : "Aucun des onze exercices ne l'utilise."}
+      ${entry.uses} extraits de code l'appellent ailleurs dans l'écosystème. <button class="btn" data-show="api" style="margin-left:8px">Voir sur la carte</button></p>
+    <div class="card">${GROUPS.map(([key, title, hint]) => `<section class="group"><header><h3>${title}</h3><p>${hint}</p></header>
+      ${listHtml(`api-${entry.name}-${key}`, entry.groups[key].map((id) => [id]), 5)}</section>`).join("")}</div>`
+    : `<p class="empty">Aucune fonction ne correspond. Élargissez la recherche ou décochez « exercices seulement ».</p>`;
+  view.className = "";
+  view.innerHTML = `<div class="split"><div class="list">
+      <input type="search" id="apiText" placeholder="Nom de fonction" value="${esc(state.apiText)}" aria-label="Filtrer les fonctions">
+      <select id="apiNamespace" aria-label="Domaine"><option value="">Tous les domaines</option>${namespaces.map((name) => `<option ${name === state.apiNamespace ? "selected" : ""}>${name}</option>`).join("")}</select>
+      <label><input type="checkbox" id="apiOnly" ${state.apiOnlyExercises ? "checked" : ""}> Utilisées dans les exercices seulement</label>
+      <div class="scroll">${rows || `<p class="empty">Aucune fonction.</p>`}</div></div><div>${detail}</div></div>`;
+}
+
+function renderResults() {
+  view.className = "";
+  view.innerHTML = `<h2>${esc(state.query)}</h2>
+    <p class="lede">Extraits classés du plus proche au moins proche par le sens. Le nombre à droite est la similarité. <button class="btn" data-show="results" style="margin-left:8px">Voir sur la carte</button></p>
+    <div class="card">${listHtml("results", state.results, 60)}</div>`;
+}
+
+function buildCategories() {
+  const counts = new Map();
+  for (const chunk of state.chunks) counts.set(chunk[state.colorBy], (counts.get(chunk[state.colorBy]) ?? 0) + 1);
+  const ordered = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const named = ordered.length > 8 ? ordered.slice(0, 7) : ordered;
+  state.categories = named.map(([name, count], index) => ({ name, count, color: state.colorBy === "kind" ? KIND_COLOR[name] : SLOTS[index] }));
+  if (ordered.length > 8) state.categories.push({ name: "Autres", count: ordered.slice(7).reduce((sum, entry) => sum + entry[1], 0), color: "--other" });
+  const lookup = new Map(state.categories.map((category) => [category.name, category]));
+  for (const chunk of state.chunks) chunk.category = lookup.get(chunk[state.colorBy]) ?? lookup.get("Autres");
+  state.hidden.clear();
+}
+
+function renderMap() {
+  buildCategories();
+  const options = FACETS.map(([facet, title]) => `<option value="${facet}" ${facet === state.colorBy ? "selected" : ""}>Couleur : ${title.toLowerCase()}</option>`).join("");
+  const legend = state.categories.map((category) => `<button data-legend="${esc(category.name)}"><i style="background:var(${category.color})"></i>${esc(label(state.colorBy, category.name))}<span>${category.count}</span></button>`).join("");
+  const banner = state.highlight ? `<div class="banner">${esc(state.highlight.title)} : ${state.highlight.ids.size} extraits mis en avant <button data-unhighlight>Tout réafficher</button></div>` : "";
+  view.className = "flush";
+  view.innerHTML = `<canvas id="map"></canvas><div class="mapbar"><div class="legend"><select id="colorBy" aria-label="Couleur des points">${options}</select>${legend}</div>${banner}</div>`;
+  bindMap();
+  draw();
+}
+
+function project(chunk, canvas) {
+  const size = Math.min(canvas.clientWidth, canvas.clientHeight) - 70;
+  const left = (canvas.clientWidth - size) / 2 + 60;
+  const top = (canvas.clientHeight - size) / 2;
+  return [(left + chunk.x * size) * state.zoom.k + state.zoom.x, (top + (1 - chunk.y) * size) * state.zoom.k + state.zoom.y];
+}
+
+const drawable = (chunk) => pass(chunk) && !state.hidden.has(chunk.category.name);
+
+function draw() {
+  const canvas = document.getElementById("map");
+  if (!canvas) return;
+  const ratio = devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * ratio;
+  canvas.height = canvas.clientHeight * ratio;
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  const colors = new Map(state.categories.map((category) => [category.name, css(category.color)]));
+  const front = [];
+  for (const chunk of state.chunks) {
+    if (!drawable(chunk)) continue;
+    if (state.highlight?.ids.has(chunk.id)) { front.push(chunk); continue; }
+    const [x, y] = project(chunk, canvas);
+    context.globalAlpha = state.highlight ? 0.45 : 0.78;
+    context.fillStyle = state.highlight ? css("--dim") : colors.get(chunk.category.name);
+    context.beginPath(); context.arc(x, y, 2.6, 0, 6.283); context.fill();
+  }
+  context.globalAlpha = 1;
+  for (const chunk of front) {
+    const [x, y] = project(chunk, canvas);
+    context.fillStyle = css("--panel");
+    context.beginPath(); context.arc(x, y, 7, 0, 6.283); context.fill();
+    context.fillStyle = colors.get(chunk.category.name);
+    context.beginPath(); context.arc(x, y, 5, 0, 6.283); context.fill();
+  }
+  if (state.selected !== null && drawable(state.chunks[state.selected])) {
+    const [x, y] = project(state.chunks[state.selected], canvas);
+    context.strokeStyle = css("--ink"); context.lineWidth = 2.5;
+    context.beginPath(); context.arc(x, y, 10, 0, 6.283); context.stroke();
+  }
+}
+
+function bindMap() {
+  const canvas = document.getElementById("map");
+  let drag = false;
+  let moved = false;
+  const nearest = (event) => {
+    const box = canvas.getBoundingClientRect();
+    const px = event.clientX - box.left;
+    const py = event.clientY - box.top;
+    let best = null;
+    let reach = 120;
+    for (const chunk of state.chunks) {
+      if (!drawable(chunk)) continue;
+      const [x, y] = project(chunk, canvas);
+      const distance = (x - px) ** 2 + (y - py) ** 2;
+      if (distance < reach) { best = chunk; reach = distance; }
+    }
+    return best;
+  };
+  canvas.onmousedown = () => { drag = true; moved = false; };
+  canvas.onmouseup = () => { drag = false; };
+  canvas.onmouseleave = () => { drag = false; tip.style.display = "none"; };
+  canvas.onmousemove = (event) => {
+    if (drag) { state.zoom.x += event.movementX; state.zoom.y += event.movementY; moved = true; draw(); return; }
+    const chunk = nearest(event);
+    canvas.style.cursor = chunk ? "pointer" : "grab";
+    tip.style.display = chunk ? "block" : "none";
+    if (chunk) {
+      tip.innerHTML = `${esc(shortTitle(chunk))}<small>${esc(label("kind", chunk.kind))} — ${esc(chunk.path)}</small>`;
+      tip.style.left = `${Math.min(event.clientX + 14, innerWidth - 400)}px`;
+      tip.style.top = `${event.clientY + 16}px`;
+    }
+  };
+  canvas.onclick = (event) => { const chunk = nearest(event); if (!moved && chunk) openReader(chunk.id); };
+  canvas.onwheel = (event) => {
+    event.preventDefault();
+    const box = canvas.getBoundingClientRect();
+    const px = event.clientX - box.left;
+    const py = event.clientY - box.top;
+    const next = Math.min(40, Math.max(0.5, state.zoom.k * Math.exp(-event.deltaY * 0.0015)));
+    const applied = next / state.zoom.k;
+    state.zoom = { x: px - (px - state.zoom.x) * applied, y: py - (py - state.zoom.y) * applied, k: next };
+    draw();
+  };
+}
+
+function openReader(id) {
+  const chunk = state.chunks[id];
+  state.selected = id;
+  reader.innerHTML = `<div class="bar"><button class="btn" data-close>Fermer</button><button class="btn" data-locate="${id}">Situer sur la carte</button></div>
+    <h3>${esc(shortTitle(chunk))}</h3>
+    <p class="where">${esc(chunk.path)}:${chunk.line} — extrait n° ${chunk.id}</p>
+    <div class="chips" style="margin:0 0 12px">${FACETS.flatMap(([facet]) => valuesOf(chunk, facet).map((value) => `<span class="chip">${esc(label(facet, value))}</span>`)).join("")}</div>
+    <pre>${esc(chunk.text)}</pre>
+    <h3 style="font-size:15px;margin-top:20px">Extraits les plus proches par le sens</h3>
+    ${chunk.near.map(([near, score]) => itemHtml(near, score)).join("")}`;
+  reader.classList.add("open");
+  reader.scrollTop = 0;
+  draw();
+}
+
+function render() {
+  renderRail();
+  ({ exercises: renderExercises, api: renderApi, map: renderMap, results: renderResults })[state.view]();
+}
+
+async function search(query) {
+  state.query = query;
+  view.className = "";
+  view.innerHTML = `<p class="lede">Recherche en cours…</p>`;
+  try {
+    const response = await fetch(`/api/search?k=120&q=${encodeURIComponent(query)}`);
+    if (!response.ok) throw new Error(`réponse ${response.status}`);
+    state.results = await response.json();
+  } catch (error) {
+    const lower = query.toLowerCase();
+    state.results = state.chunks.filter((chunk) => chunk.text.toLowerCase().includes(lower)).slice(0, 200).map((chunk) => [chunk.id]);
+    state.query = `${query} — recherche par mot exact, la recherche par le sens est injoignable (${error.message})`;
+  }
+  state.view = "results";
+  render();
+}
+
+function highlightFor(kind) {
+  if (kind === "results") return { title: "Recherche", ids: new Set(state.results.map(([id]) => id)) };
+  if (kind === "exercise") return { title: `Exercice ${state.exercise}`, ids: new Set(state.matrix.exercises.find((card) => card.name === state.exercise).related.map(([id]) => id)) };
+  const entry = state.api.find((candidate) => candidate.name === state.apiName);
+  return { title: entry.name, ids: new Set(Object.values(entry.groups).flat()) };
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-view],[data-facet],[data-chunk],[data-more],[data-exercise],[data-api],[data-show],[data-legend],[data-unhighlight],[data-close],[data-locate]");
+  if (!target) return;
+  const data = target.dataset;
+  if (data.chunk !== undefined) return openReader(Number(data.chunk));
+  if (data.close !== undefined) { reader.classList.remove("open"); return; }
+  if (data.legend !== undefined) {
+    state.hidden.has(data.legend) ? state.hidden.delete(data.legend) : state.hidden.add(data.legend);
+    target.classList.toggle("off");
+    return draw();
+  }
+  if (data.view) state.view = data.view;
+  if (data.facet) { const chosen = state.filters[data.facet]; chosen.has(data.value) ? chosen.delete(data.value) : chosen.add(data.value); }
+  if (data.more) state.expanded.has(data.more) ? state.expanded.delete(data.more) : state.expanded.add(data.more);
+  if (data.exercise) { state.exercise = data.exercise; state.view = "exercises"; }
+  if (data.api) { state.apiName = data.api; state.view = "api"; if (!apiVisible(state.api.find((entry) => entry.name === data.api))) { state.apiText = ""; state.apiNamespace = ""; state.apiOnlyExercises = false; } }
+  if (data.show) { state.highlight = highlightFor(data.show); state.view = "map"; }
+  if (data.unhighlight !== undefined) state.highlight = null;
+  if (data.locate !== undefined) { state.view = "map"; reader.classList.remove("open"); }
+  render();
+});
+document.addEventListener("input", (event) => {
+  if (event.target.id !== "apiText") return;
+  state.apiText = event.target.value;
+  renderApi();
+  const field = document.getElementById("apiText");
+  field.focus();
+  field.setSelectionRange(field.value.length, field.value.length);
+});
+document.addEventListener("change", (event) => {
+  if (event.target.id === "apiNamespace") { state.apiNamespace = event.target.value; renderApi(); }
+  if (event.target.id === "apiOnly") { state.apiOnlyExercises = event.target.checked; renderApi(); }
+  if (event.target.id === "colorBy") { state.colorBy = event.target.value; renderMap(); }
+});
+document.getElementById("query").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.target.value.trim()) search(event.target.value.trim());
+});
+document.getElementById("clear").addEventListener("click", () => { for (const [facet] of FACETS) state.filters[facet].clear(); render(); });
+addEventListener("keydown", (event) => { if (event.key === "Escape") reader.classList.remove("open"); });
+addEventListener("resize", draw);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+
+Promise.all(["chunks", "matrix", "api"].map((name) => fetch(`data/${name}.json`).then((response) => response.json())))
+  .then(([chunks, matrix, api]) => { state.chunks = chunks; state.matrix = matrix; state.api = api; render(); })
+  .catch((error) => { view.innerHTML = `<p class="lede">Les données n'ont pas pu être chargées (${esc(error.message)}). Lancez build.py, puis le serveur serve.py.</p>`; });
+</script>
+</body>
+</html>
