@@ -4,11 +4,13 @@ import type { GoAST } from "@go";
 import { duploJSDeclarationTransformers } from "../duplojs";
 import { sharedDeclarationTransformers } from "../shared";
 import { functionDeclarationTransformer } from "./function";
+import { variableStatementTransformer } from "./variable";
 
 export const declarationTransformers = DCommon.memo(
 	(): readonly Transformer<GoAST.Declaration>[] => [
 		...duploJSDeclarationTransformers.value,
 		...sharedDeclarationTransformers.value,
 		functionDeclarationTransformer,
+		variableStatementTransformer,
 	],
 );
