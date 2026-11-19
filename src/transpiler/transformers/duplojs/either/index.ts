@@ -11,6 +11,7 @@ import { eitherSuccessDependency, successFunctionIdentifier } from "./success/sh
 import { eitherFailDependency, failFunctionIdentifier } from "./fail/sharedDependency";
 import { eitherLeftDependency, leftFunctionIdentifier } from "./left/sharedDependency";
 import { matchInformationExpressionHandler } from "./matchInformation";
+import { rightPipeExpressionHandler } from "./rightPipe";
 import { isRightExpressionHandler } from "./isRight";
 import { eitherTypeHandler, resolveEitherTypeMember, type EitherTypeMember } from "./eitherType";
 
@@ -82,6 +83,13 @@ export const duploJSEitherExpressionTransformer: Transformer<GoAST.Expression> =
 			DPattern.match(
 				DCommon.equal("matchInformation"),
 				() => matchInformationExpressionHandler(
+					node,
+					context,
+				),
+			),
+			DPattern.match(
+				DCommon.equal("rightPipe"),
+				() => rightPipeExpressionHandler(
 					node,
 					context,
 				),

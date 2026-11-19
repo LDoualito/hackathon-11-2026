@@ -134,9 +134,15 @@ documenter comme limite.
   `expression/stringLiteral.ts`, `type/string.ts`, `type/boolean.ts`, `type/ofExpression.ts`
   (type Go d'une expression via le checker), `common/assignment.ts`.
   `compare.sh 06` attend `pipe`, `whenIsRightOtherwise`, `DArray.map`, `DString.to` (02 à 05).
-- Limites connues : voir les sections « Exercice 01 », « 04 » et « 06 » des README.
+- **Projet 07 : partie Either validée** (`brouillons/variations-07`, sortie identique). Ajoutés :
+  `either/rightPipe` (un `if` par étape sur une variable accumulateur ; tous les Either de la
+  chaîne doivent avoir le même type Go), `type/numberLiteral.ts` (`0` -> `float64`),
+  **`common/inlineCallback.ts`** : recopie en ligne une fonction passée en argument (`(x) => …`
+  ou nom de fonction). À réutiliser pour `whenIsRight`, `whenIsRightOtherwise`, `DArray.map`.
+  `compare.sh 07` attend `pipe`, `whenIsRightOtherwise`, `DArray.map`, `DString.to` (02 à 05).
+- Limites connues : voir les sections « Exercice 01 », « 04 », « 06 » et « 07 » des README.
 - Répartition : notre binôme fait la gestion des Either des exercices 04, 06 et 07
   (constructeurs, `matchInformation`, `rightPipe`), plus le TS de base de leurs fichiers
   (`-1`, ternaire, chaînes, type littéral `0`).
-- Prochaine étape : exercice 07 (`DEither.rightPipe`, `divide.ts`, type littéral `0`,
-  `matchInformation` avec une fonction passée par son nom).
+- Prochaine étape : notre partie (04, 06, 07) est faite. Attendre les chantiers 02 à 05 pour
+  valider `compare.sh 04`, `06` et `07` en entier.

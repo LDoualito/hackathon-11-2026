@@ -10,6 +10,7 @@ import { transformTypeOfExpression } from "../../../type/ofExpression";
 import { describeEitherMember, resolveEitherTypeMember, type EitherMemberSide } from "../eitherType";
 import { eitherInformationFieldIdentifier, eitherLeftFieldIdentifier, eitherRightFieldIdentifier } from "../sharedDependency";
 import { createSimpleAssignment } from "../../../common";
+import { inlineCallback } from "../../../common/inlineCallback";
 
 /**
  * Côté (Left ou Right) de chaque information possible de l'Either, lu dans
@@ -78,6 +79,9 @@ interface MatchSwitch {
  *       _ = Sourced_value
  *       ...préparations du corps
  *       Generated_2 = <corps>
+ *
+ * Le traitement est recopié par `inlineCallback` (common/inlineCallback.ts),
+ * qui gère aussi une fonction passée par son nom (`success: double`).
  */
 async function transformMatchCase(
 	property: TsAST.ObjectLiteralElementLike,
@@ -105,63 +109,31 @@ async function transformMatchCase(
 		return context.error(property, "either-match-information-information-on-both-sides");
 	}
 
-	const handler = property.initializer;
-
-	if (
-		!TsAST.isArrowFunction(handler)
-		|| TsAST.isBlock(handler.body)
-		|| handler.parameters.length > 1
-	) {
-		// Pour l'instant : `() => valeur` ou `(x) => valeur`.
-		return context.error(handler, "either-match-information-handler-not-supported");
-	}
-
-	const [parameter] = handler.parameters;
-
-	if (
-		parameter
-		&& (!TsAST.isIdentifier(parameter.name) || parameter.initializer || parameter.dotDotDotToken)
-	) {
-		return context.error(parameter, "either-match-information-parameter-not-supported");
-	}
-
-	// `(value) =>` : value reçoit la valeur du bon côté de l'Either.
-	// `_ = value` : Go refuse une variable jamais lue, cette ligne dit « c'est voulu ».
-	const parameterStatements = parameter && TsAST.isIdentifier(parameter.name)
-		? DCommon.pipe(
-			context.createSourceIdentifier(parameter.name.text),
-			(parameterIdentifier) => [
-				GoAST.createShortVariableDeclarationStatement({
-					identifier: parameterIdentifier,
-					initializer: GoAST.createSelectorExpression({
-						target: either,
-						identifier: firstSide.side === "left"
-							? eitherLeftFieldIdentifier
-							: eitherRightFieldIdentifier,
-					}),
-				}),
-				createSimpleAssignment(GoAST.createIdentifier("_"), parameterIdentifier),
-			],
-		)
-		: [];
-
-	const body = await DCommon.asyncPipe(
-		context.transform(handler.body, expressionTransformers.value),
-		DEither.unwrapRight,
+	// Le traitement reçoit la valeur du bon côté de l'Either (.Left ou .Right).
+	const handler = await inlineCallback(
+		property.initializer,
+		GoAST.createSelectorExpression({
+			target: either,
+			identifier: firstSide.side === "left"
+				? eitherLeftFieldIdentifier
+				: eitherRightFieldIdentifier,
+		}),
+		context,
 	);
 
-	if (DEither.isLeft(body)) {
-		return body;
+	if (DEither.isLeft(handler)) {
+		return handler;
 	}
+
+	const { before, result: handlerResult } = DEither.unwrapRight(handler);
 
 	return DEither.right(
 		"match-case",
 		GoAST.createExpressionSwitchCase({
 			expressions: DCommon.cast([GoAST.createStringLiteral({ value: information })]),
-			statements: DArray.concat(
-				parameterStatements,
-				body.before,
-				[createSimpleAssignment(result, body.result)],
+			statements: DArray.push(
+				before,
+				createSimpleAssignment(result, handlerResult),
 			),
 		}),
 	);

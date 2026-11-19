@@ -101,7 +101,7 @@ Sourced_doubled := Generated_21
   `1 10 -3 -5 6 30`, comme TS).
 - Refusées avec une erreur explicite : ternaire sur un nombre (`conditional-condition-is-not-boolean`),
   `count || 5` (`logical-operand-is-not-boolean`), traitement avec un bloc `{ return … }`
-  (`either-match-information-handler-not-supported`), `DEither.left("x")` sans valeur (le build
+  (`callback-not-supported-yet`), `DEither.left("x")` sans valeur (le build
   s'arrête sur le type `undefined`, pas encore traduit : `notfound-transformer`).
 
 **Résultat observé**
@@ -121,9 +121,9 @@ cd /tmp/v06 && go run . | diff - ~/Desktop/hackaton/brouillons/variations-06/att
 - Dans `index.ts`, le traitement `success: (value) => DString.to(value)` a besoin de `DString.to`
   (chantier 4), et le résultat a le type `string | (string & Number)` : il faudra traduire ce type
   « marqué » en `string`.
-- `matchInformation` : seulement la forme à deux arguments, et des traitements `() => valeur` ou
-  `(x) => valeur`. La forme courte pour un pipe, les traitements avec un bloc, et une fonction
-  passée par son nom (`success: DString.to`, exercice 07) ne sont pas encore gérés.
+- `matchInformation` : seulement la forme à deux arguments, et des traitements `() => valeur`,
+  `(x) => valeur` ou une fonction passée par son nom (ajoutée à l'exercice 07). La forme courte pour
+  un pipe et les traitements avec un bloc ne sont pas encore gérés.
 - Une même information des deux côtés (`Left<"x", …> | Right<"x", …>`) est refusée : sa valeur
   n'aurait pas un seul type Go.
 - `DEither.left("x")` sans valeur n'est pas géré.
