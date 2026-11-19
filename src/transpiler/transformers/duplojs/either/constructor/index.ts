@@ -1,4 +1,4 @@
-import { type Transformer } from "@transformer";
+import { type Transformer, type SharedDependency } from "@transformer";
 import { GoAST } from "@go";
 import { TsAST } from "@typescript";
 import * as DCommon from "@duplojs/lang/common";
@@ -9,23 +9,37 @@ import { callExpressionTransformer } from "../../../shared";
 import { typeTransformers } from "../../../type";
 import { getExpectedEitherType } from "../expectedType";
 import { eitherDependency } from "../sharedDependency";
-import { eitherSuccessDependency, successFunctionIdentifier } from "./sharedDependency";
 
 /**
- * `DEither.success(value)`.
+ * Un constructeur d'Either DuploJS (`success`, `fail`…) et sa fonction Go.
+ * La fonction Go est écrite à la main dans un fichier .go (décision n°8),
+ * déclaré par `dependency`.
+ */
+export interface EitherConstructor {
+	readonly functionIdentifier: GoAST.Identifier;
+	readonly dependency: SharedDependency;
+
+	/** Nombre d'arguments attendu par la fonction Go (success : 1, fail : 0, left : 2). */
+	readonly argumentCount: number;
+}
+
+/**
+ * `DEither.success(value)`, `DEither.fail()`… : tous les constructeurs suivent
+ * la même recette.
  *
  * L'appel lui-même passe par le transformer d'appel commun (évaluation de la
  * fonction puis des arguments). Quand ce dernier traduit la référence
- * `DEither.success`, on renvoie la fonction Go générique déjà instanciée :
+ * (`DEither.success`), on renvoie la fonction Go générique déjà instanciée :
  *
  *   Generated_N := shard_dependencies.EitherSuccessOf[shard_dependencies.JSUndefined, float64]
  *
  * Sans `[L, R]`, Go refuse de ranger une fonction générique dans une variable
  * (erreur du projet 00). L et R viennent du type TS attendu pour cet Either.
  */
-export async function successExpressionHandler(
+export async function eitherConstructorExpressionHandler(
 	node: TsAST.Node,
 	context: BuildContext,
+	constructor: EitherConstructor,
 ): Promise<ReturnType<Transformer<GoAST.Expression>["transformer"]>> {
 	if (TsAST.isCallExpression(node)) {
 		return context.transform(node, [callExpressionTransformer]);
@@ -34,8 +48,13 @@ export async function successExpressionHandler(
 	const call = node.parent;
 
 	if (!call || !TsAST.isCallExpression(call) || call.expression !== node) {
-		// `DEither.success` passé comme valeur (par exemple à DCommon.pipe) : non géré pour l'instant.
-		return context.error(node, "either-success-used-as-value");
+		// Constructeur passé comme valeur (par exemple à DCommon.pipe) : non géré pour l'instant.
+		return context.error(node, "either-constructor-used-as-value");
+	}
+
+	if (call.arguments.length !== constructor.argumentCount) {
+		// Ex. `DEither.left("x")` sans valeur : la fonction Go attend toujours 2 arguments.
+		return context.error(call, "either-constructor-arguments-not-supported");
 	}
 
 	const { typeChecker } = context.transpilation;
@@ -43,7 +62,7 @@ export async function successExpressionHandler(
 	const expectedTypeNode = await typeChecker.typeToTypeNode(expectedType, call);
 
 	if (!expectedTypeNode) {
-		return context.error(call, "either-success-unknown-expected-type");
+		return context.error(call, "either-constructor-unknown-expected-type");
 	}
 
 	const eitherType = await DCommon.asyncPipe(
@@ -56,18 +75,18 @@ export async function successExpressionHandler(
 	}
 
 	if (!DModeling.hasTagValue(eitherType.result, "[node]type-reference-generic")) {
-		return context.error(call, "either-success-expected-type-is-not-either");
+		return context.error(call, "either-constructor-expected-type-is-not-either");
 	}
 
 	context.registerSharedDependency(eitherDependency.value);
-	const packageName = context.registerSharedDependency(eitherSuccessDependency.value);
+	const packageName = context.registerSharedDependency(constructor.dependency);
 
 	return context.success({
 		before: eitherType.before,
 		result: GoAST.createInstantiationExpression({
 			target: GoAST.createSelectorExpression({
 				target: packageName,
-				identifier: successFunctionIdentifier,
+				identifier: constructor.functionIdentifier,
 			}),
 			typeArguments: eitherType.result.typeArguments,
 		}),

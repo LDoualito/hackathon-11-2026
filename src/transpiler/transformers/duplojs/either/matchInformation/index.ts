@@ -1,0 +1,283 @@
+import { type Transformer } from "@transformer";
+import { GoAST } from "@go";
+import { TsAST } from "@typescript";
+import * as DArray from "@duplojs/lang/array";
+import * as DCommon from "@duplojs/lang/common";
+import * as DEither from "@duplojs/lang/either";
+import { type BuildContext } from "../../../../context/build";
+import { expressionTransformers } from "../../../expression";
+import { transformTypeOfExpression } from "../../../type/ofExpression";
+import { describeEitherMember, resolveEitherTypeMember, type EitherMemberSide } from "../eitherType";
+import { eitherInformationFieldIdentifier, eitherLeftFieldIdentifier, eitherRightFieldIdentifier } from "../sharedDependency";
+import { createSimpleAssignment } from "../../../common";
+
+/**
+ * Côté (Left ou Right) de chaque information possible de l'Either, lu dans
+ * son type TS. Ex. `Left<"negative-operand", number> | Success<number>`
+ * -> negative-operand : left, success : right.
+ */
+async function getInformationSides(
+	input: TsAST.Expression,
+	context: BuildContext,
+) {
+	const { typeChecker } = context.transpilation;
+	const inputTypeNode = await typeChecker.typeToTypeNode(
+		await typeChecker.getTypeAtLocation(input),
+		input,
+	);
+
+	if (!inputTypeNode) {
+		return context.error(input, "either-match-information-unknown-input-type");
+	}
+
+	const members = await DCommon.asyncPipe(
+		TsAST.isUnionTypeNode(inputTypeNode) ? inputTypeNode.types : [inputTypeNode],
+		DArray.map(async(typeNode) => {
+			const member = await resolveEitherTypeMember(typeNode, context);
+
+			return member && describeEitherMember(member);
+		}),
+		DCommon.promiseAll,
+	);
+
+	const sides = DArray.filter(
+		members,
+		(member): member is EitherMemberSide => member?.information !== undefined,
+	);
+
+	if (sides.length !== members.length) {
+		// Pas un Either, variante inconnue, ou information non fixée par le type.
+		return context.error(input, "either-match-information-input-not-supported");
+	}
+
+	return DEither.right("information-sides", sides);
+}
+
+/** Ce que tous les `case` partagent. */
+interface MatchSwitch {
+
+	/** Variable Go qui contient l'Either testé (`Generated_1`). */
+	readonly either: GoAST.Identifier;
+
+	/** Variable Go qui reçoit le résultat (`Generated_2`). */
+	readonly result: GoAST.Identifier;
+
+	/** Côté (Left/Right) de chaque information possible. */
+	readonly sides: readonly EitherMemberSide[];
+}
+
+/**
+ * Un traitement du matcher -> un `case` du switch.
+ *
+ *   "negative-operand": (value) => value * 10
+ *
+ * devient
+ *
+ *   case "negative-operand":
+ *       Sourced_value := Generated_1.Left
+ *       _ = Sourced_value
+ *       ...préparations du corps
+ *       Generated_2 = <corps>
+ */
+async function transformMatchCase(
+	property: TsAST.ObjectLiteralElementLike,
+	{ either, result, sides }: MatchSwitch,
+	context: BuildContext,
+) {
+	if (
+		!TsAST.isPropertyAssignment(property)
+		|| (!TsAST.isIdentifier(property.name) && !TsAST.isStringLiteral(property.name))
+	) {
+		return context.error(property, "either-match-information-property-not-supported");
+	}
+
+	const information = property.name.text;
+	const sidesOfInformation = DArray.filter(sides, (side) => side.information === information);
+	const [firstSide] = sidesOfInformation;
+
+	if (!firstSide) {
+		// TS l'interdit déjà (clé en trop dans le matcher).
+		return context.error(property, "either-match-information-unknown-information");
+	}
+
+	if (DArray.some(sidesOfInformation, (side) => side.side !== firstSide.side)) {
+		// Même information à gauche ET à droite : la valeur n'aurait pas un seul type Go.
+		return context.error(property, "either-match-information-information-on-both-sides");
+	}
+
+	const handler = property.initializer;
+
+	if (
+		!TsAST.isArrowFunction(handler)
+		|| TsAST.isBlock(handler.body)
+		|| handler.parameters.length > 1
+	) {
+		// Pour l'instant : `() => valeur` ou `(x) => valeur`.
+		return context.error(handler, "either-match-information-handler-not-supported");
+	}
+
+	const [parameter] = handler.parameters;
+
+	if (
+		parameter
+		&& (!TsAST.isIdentifier(parameter.name) || parameter.initializer || parameter.dotDotDotToken)
+	) {
+		return context.error(parameter, "either-match-information-parameter-not-supported");
+	}
+
+	// `(value) =>` : value reçoit la valeur du bon côté de l'Either.
+	// `_ = value` : Go refuse une variable jamais lue, cette ligne dit « c'est voulu ».
+	const parameterStatements = parameter && TsAST.isIdentifier(parameter.name)
+		? DCommon.pipe(
+			context.createSourceIdentifier(parameter.name.text),
+			(parameterIdentifier) => [
+				GoAST.createShortVariableDeclarationStatement({
+					identifier: parameterIdentifier,
+					initializer: GoAST.createSelectorExpression({
+						target: either,
+						identifier: firstSide.side === "left"
+							? eitherLeftFieldIdentifier
+							: eitherRightFieldIdentifier,
+					}),
+				}),
+				createSimpleAssignment(GoAST.createIdentifier("_"), parameterIdentifier),
+			],
+		)
+		: [];
+
+	const body = await DCommon.asyncPipe(
+		context.transform(handler.body, expressionTransformers.value),
+		DEither.unwrapRight,
+	);
+
+	if (DEither.isLeft(body)) {
+		return body;
+	}
+
+	return DEither.right(
+		"match-case",
+		GoAST.createExpressionSwitchCase({
+			expressions: DCommon.cast([GoAST.createStringLiteral({ value: information })]),
+			statements: DArray.concat(
+				parameterStatements,
+				body.before,
+				[createSimpleAssignment(result, body.result)],
+			),
+		}),
+	);
+}
+
+/**
+ * `DEither.matchInformation(either, { information: (value) => ..., ... })`.
+ *
+ * Pas de fonction anonyme en Go (décision n°5) : un `switch` sur l'information,
+ * et le corps de chaque traitement est recopié dans son `case` :
+ *
+ *   Generated_1 := either
+ *   var Generated_2 string            // type du résultat, donné par le checker TS
+ *   switch Generated_1.Information {
+ *   case "negative-operand":
+ *       Generated_2 = "un opérande est négatif"
+ *   case "success":
+ *       Sourced_value := Generated_1.Right
+ *       _ = Sourced_value
+ *       Generated_2 = ...
+ *   }
+ *
+ * TypeScript oblige à traiter toutes les informations possibles, et seulement
+ * elles : pas besoin de `default`.
+ */
+export async function matchInformationExpressionHandler(
+	node: TsAST.Node,
+	context: BuildContext,
+): Promise<ReturnType<Transformer<GoAST.Expression>["transformer"]>> {
+	if (!TsAST.isCallExpression(node)) {
+		// `DEither.matchInformation` passé comme valeur : non géré.
+		return context.error(node, "either-match-information-used-as-value");
+	}
+
+	const [input, matcher] = node.arguments;
+
+	if (!input || !matcher || node.arguments.length !== 2) {
+		// Forme courte `matchInformation(matcher)` (pour un pipe) : pas encore gérée.
+		return context.error(node, "either-match-information-expects-two-arguments");
+	}
+
+	if (!TsAST.isObjectLiteralExpression(matcher)) {
+		return context.error(matcher, "either-match-information-matcher-not-object");
+	}
+
+	const sides = await getInformationSides(input, context);
+
+	if (DEither.isLeft(sides)) {
+		return sides;
+	}
+
+	const resultType = await transformTypeOfExpression(node, context);
+
+	if (DEither.isLeft(resultType)) {
+		return resultType;
+	}
+
+	const either = await DCommon.asyncPipe(
+		context.transform(input, expressionTransformers.value),
+		DEither.unwrapRight,
+	);
+
+	if (DEither.isLeft(either)) {
+		return either;
+	}
+
+	const eitherAssignment = GoAST.createShortVariableDeclarationStatement({
+		identifier: context.generateIdentifier(),
+		initializer: either.result,
+	});
+	const resultIdentifier = context.generateIdentifier();
+
+	const cases = await DCommon.asyncPipe(
+		matcher.properties,
+		DArray.map(
+			(property) => transformMatchCase(
+				property,
+				{
+					either: eitherAssignment.identifier,
+					result: resultIdentifier,
+					sides: DEither.unwrapRight(sides),
+				},
+				context,
+			),
+		),
+		DCommon.promiseAll,
+	);
+
+	const failedCase = DArray.find(cases, DEither.isLeft);
+
+	if (failedCase) {
+		return failedCase;
+	}
+
+	return context.success({
+		before: DArray.concat(
+			resultType.before,
+			either.before,
+			[
+				eitherAssignment,
+				GoAST.createVariableDeclarationZeroValue({
+					identifier: resultIdentifier,
+					typeReference: resultType.result,
+				}),
+				GoAST.createExpressionSwitchStatementWithoutDefault({
+					expression: GoAST.createSelectorExpression({
+						target: eitherAssignment.identifier,
+						identifier: eitherInformationFieldIdentifier,
+					}),
+					cases: DArray.map(
+						DArray.filter(cases, DEither.isRight),
+						DEither.unwrapRight,
+					),
+				}),
+			],
+		),
+		result: resultIdentifier,
+	});
+}

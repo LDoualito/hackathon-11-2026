@@ -5,6 +5,9 @@ import { createSharedDependency } from "@transformer";
 
 export const eitherTypeIdentifier = GoAST.createIdentifier("Either");
 export const eitherIsRightFieldIdentifier = GoAST.createIdentifier("IsRight");
+export const eitherInformationFieldIdentifier = GoAST.createIdentifier("Information");
+export const eitherLeftFieldIdentifier = GoAST.createIdentifier("Left");
+export const eitherRightFieldIdentifier = GoAST.createIdentifier("Right");
 export const undefinedTypeIdentifier = GoAST.createIdentifier("JSUndefined");
 
 /**

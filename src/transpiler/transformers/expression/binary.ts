@@ -21,8 +21,7 @@ const binaryOperators: Partial<
 	[TsAST.SyntaxKind.LessThanLessThanToken]: "<<",
 	[TsAST.SyntaxKind.GreaterThanGreaterThanToken]: ">>",
 
-	[TsAST.SyntaxKind.AmpersandAmpersandToken]: "&&",
-	[TsAST.SyntaxKind.BarBarToken]: "||",
+	// && et || : voir logical.ts (la partie droite n'est pas toujours calculée).
 
 	[TsAST.SyntaxKind.EqualsEqualsEqualsToken]: "==",
 	[TsAST.SyntaxKind.ExclamationEqualsEqualsToken]: "!=",

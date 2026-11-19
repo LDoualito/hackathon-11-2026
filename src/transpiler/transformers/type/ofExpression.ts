@@ -1,0 +1,30 @@
+import { type TsAST } from "@typescript";
+import * as DCommon from "@duplojs/lang/common";
+import * as DEither from "@duplojs/lang/either";
+import { type BuildContext } from "../../context/build";
+import { typeTransformers } from ".";
+
+/**
+ * Type Go d'une expression TS, d'après le checker.
+ *
+ * Sert quand le Go doit déclarer une variable AVANT de la remplir
+ * (`var Generated_1 float64`), par exemple pour un ternaire ou un
+ * matchInformation : TS ne l'écrit pas, mais le checker le connaît.
+ */
+export async function transformTypeOfExpression(
+	expression: TsAST.Expression,
+	context: BuildContext,
+) {
+	const { typeChecker } = context.transpilation;
+	const type = await typeChecker.getTypeAtLocation(expression);
+	const typeNode = await typeChecker.typeToTypeNode(type, expression);
+
+	if (!typeNode) {
+		return context.error(expression, "expression-type-unknown");
+	}
+
+	return DCommon.asyncPipe(
+		context.transform(typeNode, typeTransformers.value),
+		DEither.unwrapRight,
+	);
+}

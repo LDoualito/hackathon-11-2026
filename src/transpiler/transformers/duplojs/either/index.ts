@@ -6,9 +6,13 @@ import type { GoAST } from "@go";
 import { TsAST } from "@typescript";
 import * as DPattern from "@duplojs/lang/pattern";
 import { type BuildContext } from "../../../context/build";
-import { successExpressionHandler } from "./success";
+import { eitherConstructorExpressionHandler } from "./constructor";
+import { eitherSuccessDependency, successFunctionIdentifier } from "./success/sharedDependency";
+import { eitherFailDependency, failFunctionIdentifier } from "./fail/sharedDependency";
+import { eitherLeftDependency, leftFunctionIdentifier } from "./left/sharedDependency";
+import { matchInformationExpressionHandler } from "./matchInformation";
 import { isRightExpressionHandler } from "./isRight";
-import { eitherTypeHandler, type EitherTypeMember } from "./eitherType";
+import { eitherTypeHandler, resolveEitherTypeMember, type EitherTypeMember } from "./eitherType";
 
 export const duploJSEitherDeclarationTransformer: Transformer<GoAST.Declaration> = createTransformer(
 	(_node, context) => context.notSupport(),
@@ -38,9 +42,46 @@ export const duploJSEitherExpressionTransformer: Transformer<GoAST.Expression> =
 
 		return DCommon.pipe(
 			moduleReference.symbol.name,
+			// Constructeurs : même handler, seule la fonction Go change.
 			DPattern.match(
 				DCommon.equal("success"),
-				() => successExpressionHandler(
+				() => eitherConstructorExpressionHandler(
+					node,
+					context,
+					{
+						functionIdentifier: successFunctionIdentifier,
+						dependency: eitherSuccessDependency.value,
+						argumentCount: 1,
+					},
+				),
+			),
+			DPattern.match(
+				DCommon.equal("fail"),
+				() => eitherConstructorExpressionHandler(
+					node,
+					context,
+					{
+						functionIdentifier: failFunctionIdentifier,
+						dependency: eitherFailDependency.value,
+						argumentCount: 0,
+					},
+				),
+			),
+			DPattern.match(
+				DCommon.equal("left"),
+				() => eitherConstructorExpressionHandler(
+					node,
+					context,
+					{
+						functionIdentifier: leftFunctionIdentifier,
+						dependency: eitherLeftDependency.value,
+						argumentCount: 2,
+					},
+				),
+			),
+			DPattern.match(
+				DCommon.equal("matchInformation"),
+				() => matchInformationExpressionHandler(
 					node,
 					context,
 				),
@@ -58,39 +99,6 @@ export const duploJSEitherExpressionTransformer: Transformer<GoAST.Expression> =
 		);
 	},
 );
-
-/**
- * Reconnaît un type Either DuploJS : une variante seule (`DEither.Success<number>`)
- * ou une union dont TOUS les membres sont des variantes Either
- * (`DEither.Success<number> | DEither.Fail`). Fonctionne aussi sur les types
- * reconstruits par le checker (type de retour déduit, type attendu).
- */
-async function resolveEitherTypeMember(
-	member: TsAST.TypeNode,
-	context: BuildContext,
-): Promise<EitherTypeMember | undefined> {
-	if (!TsAST.isTypeReferenceNode(member) && !TsAST.isImportTypeNode(member)) {
-		return undefined;
-	}
-
-	const moduleReference = await DCommon.asyncPipe(
-		context.resolveReferenceModule(
-			TsAST.isTypeReferenceNode(member) ? member.typeName : member,
-			"@duplojs/lang",
-			/^dist\/either\//,
-		),
-		DEither.unwrapRight,
-	);
-
-	if (DEither.isLeft(moduleReference)) {
-		return undefined;
-	}
-
-	return {
-		node: member,
-		exportName: moduleReference.symbol.name,
-	};
-}
 
 export const duploJSEitherTypeTransformer: Transformer<GoAST.GenericTypeReference> = createTransformer(
 	async(node, context) => {

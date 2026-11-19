@@ -123,5 +123,20 @@ documenter comme limite.
   `statement/variable.ts` (enregistré), `type/parenthesized.ts`, routeur `duplojs/common` (`print`),
   handlers `either/isRight` et `either/eitherType` (types `Success`, `Fail` et leurs unions),
   runtime `either.go`, `success.go`, `print.go` (décision n°8). Section README écrite.
-- Limites connues : voir la section « Exercice 01 » de `projects/01/README.md`.
-- Prochaine étape : exercice 02 (`DEither.whenIsRight`, `DArray.coalescing`).
+- **Projet 04 : partie Either validée** (`brouillons/variations-04`, sortie identique). Ajoutés :
+  handler commun `either/constructor` (`success` et `fail`), runtime `fail/fail.go`,
+  `expression/prefixUnary.ts` (`-x`, toujours appliqué à une variable à cause de `-0`).
+  `compare.sh 04` attend `pipe` et `whenIsRight` (exercices 02-03, autre chantier).
+- **Projet 06 : partie Either validée** (`brouillons/variations-06`, sortie identique). Ajoutés :
+  constructeur `left` (`left/left.go`), `Left<info, valeur>` dans la table des types,
+  `either/matchInformation` (switch en ligne), `expression/conditional.ts` (ternaire),
+  `expression/logical.ts` (`||` et `&&` avec court-circuit, retirés de `binary.ts`),
+  `expression/stringLiteral.ts`, `type/string.ts`, `type/boolean.ts`, `type/ofExpression.ts`
+  (type Go d'une expression via le checker), `common/assignment.ts`.
+  `compare.sh 06` attend `pipe`, `whenIsRightOtherwise`, `DArray.map`, `DString.to` (02 à 05).
+- Limites connues : voir les sections « Exercice 01 », « 04 » et « 06 » des README.
+- Répartition : notre binôme fait la gestion des Either des exercices 04, 06 et 07
+  (constructeurs, `matchInformation`, `rightPipe`), plus le TS de base de leurs fichiers
+  (`-1`, ternaire, chaînes, type littéral `0`).
+- Prochaine étape : exercice 07 (`DEither.rightPipe`, `divide.ts`, type littéral `0`,
+  `matchInformation` avec une fonction passée par son nom).

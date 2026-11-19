@@ -88,8 +88,9 @@ func init() {
   (type déduit `Success<number>`) ; appel imbriqué dans `print` ; `if` dans une fonction.
 - Refusées avec une erreur explicite (jamais de Go faux) : condition non booléenne
   (`if (count)` → `if-condition-is-not-boolean`), résultat de `print` utilisé
-  (`common-print-result-used`), second paramètre de `print`, variantes Either autres que
-  `Success` et `Fail` (`either-type-not-supported-yet`), `DEither.success` passé comme valeur.
+  (`common-print-result-used`), second paramètre de `print`, variante Either absente de la table
+  (`either-type-not-supported-yet` ; aujourd’hui `Right`, `erreur-variante.ts`), `DEither.success`
+  passé comme valeur.
 
 **Résultat observé**
 
@@ -108,9 +109,12 @@ le tas est l’argument de `Print`, emballé dans un `any`.
 **Limites**
 
 - Deux variantes d’un même côté dont les valeurs ont des types Go différents (par exemple
-  `Fail | Left<"x", number>`, qui apparaîtra avec l’exercice 07) : un seul `L` ne suffit pas.
-  Le contrôle est déjà en place (erreur `either-side-with-several-go-types`). Aujourd’hui une telle
-  union s’arrête plus tôt, car `Left` n’est pas encore dans la table (`either-type-not-supported-yet`).
+  `Fail | Left<"x", number>`) : un seul `L` ne suffit pas. Le build s’arrête avec l’erreur
+  `either-side-with-several-go-types` (testé depuis l’exercice 06, où `Left` a rejoint la table :
+  `brouillons/variations-01/erreur-left.ts`). Aucun exercice de 00 à 10 ne
+  produit ce cas (types vérifiés avec le checker, `brouillons/explore-vars.ts` : dans l’exercice 07,
+  les Left portent `number` et `0`, deux `float64`). Il apparaît dans l’exemple de l’encadrant
+  (`undefined` et `null`).
 - Les `const` de haut niveau deviennent des variables locales de `func init()` : une fonction du
   même fichier ne peut pas les lire, et une variable jamais utilisée fait échouer la compilation
   Go (« declared and not used »).

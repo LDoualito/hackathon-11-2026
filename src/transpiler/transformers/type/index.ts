@@ -5,12 +5,16 @@ import { duploJSTypeTransformers } from "../duplojs";
 import { sharedTypeTransformers } from "../shared";
 import { float64TypeTransformer } from "./float";
 import { parenthesizedTypeTransformer } from "./parenthesized";
+import { stringTypeTransformer } from "./string";
+import { booleanTypeTransformer } from "./boolean";
 
 export const typeTransformers = DCommon.memo(
 	(): readonly Transformer<GoAST.Type | GoAST.TypeReference>[] => [
 		...duploJSTypeTransformers.value,
 		...sharedTypeTransformers.value,
 		float64TypeTransformer,
+		stringTypeTransformer,
+		booleanTypeTransformer,
 		parenthesizedTypeTransformer,
 	],
 );
