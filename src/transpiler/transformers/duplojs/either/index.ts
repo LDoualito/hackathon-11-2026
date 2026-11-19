@@ -11,6 +11,7 @@ import {
 	leftAnyExpressionHandler,
 	successAnyExpressionHandler,
 } from "./any/constructors";
+import { whenIsRightAnyExpressionHandler } from "./any/whenIsRight";
 
 export const duploJSEitherDeclarationTransformer: Transformer<GoAST.Declaration> = createTransformer(
 	(_node, context) => context.notSupport(),
@@ -56,6 +57,10 @@ export const duploJSEitherExpressionTransformer: Transformer<GoAST.Expression> =
 			DPattern.match(
 				DCommon.equal("isRight"),
 				() => isRightAnyExpressionHandler(node, context),
+			),
+			DPattern.match(
+				DCommon.equal("whenIsRight"),
+				() => whenIsRightAnyExpressionHandler(node, context),
 			),
 			DPattern.otherwise(
 				() => context.error(node),

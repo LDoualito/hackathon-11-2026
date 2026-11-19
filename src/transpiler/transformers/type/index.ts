@@ -5,6 +5,7 @@ import { duploJSTypeTransformers } from "../duplojs";
 import { sharedTypeTransformers } from "../shared";
 import { float64TypeTransformer } from "./float";
 import { parenthesizedTypeTransformer } from "./parenthesized";
+import { unionTypeTransformer } from "./union";
 
 
 export const typeTransformers = DCommon.memo(
@@ -13,5 +14,6 @@ export const typeTransformers = DCommon.memo(
 		...sharedTypeTransformers.value,
 		float64TypeTransformer,
 		parenthesizedTypeTransformer,
+		unionTypeTransformer,
 	],
 );

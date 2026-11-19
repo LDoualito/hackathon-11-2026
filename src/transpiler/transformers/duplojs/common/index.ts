@@ -5,6 +5,7 @@ import { createTransformer, type Transformer } from "@transformer";
 import type { GoAST } from "@go";
 import { TsAST } from "@typescript";
 import { printExpressionHandler } from "./print";
+import { pipeExpressionHandler } from "./pipe";
 
 // Aiguillage des fonctions de @duplojs/lang/common (comme either/index.ts pour Either)
 export const duploJSCommonExpressionTransformer: Transformer<GoAST.Expression> = createTransformer(
@@ -34,6 +35,10 @@ export const duploJSCommonExpressionTransformer: Transformer<GoAST.Expression> =
 			DPattern.match(
 				DCommon.equal("print"),
 				() => printExpressionHandler(node, context),
+			),
+			DPattern.match(
+				DCommon.equal("pipe"),
+				() => pipeExpressionHandler(node, context),
 			),
 			DPattern.otherwise(
 				() => context.error(node),
