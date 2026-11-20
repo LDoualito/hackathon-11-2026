@@ -1,3 +1,5 @@
+@hackathon.md
+
 <!-- duplojs-agents-kit:coding-conventions:start -->
 ## Développement avec DuploJS
 
@@ -9,3 +11,4 @@
 Les chemins des routeurs sont relatifs au dossier de ce fichier ; résoudre ensuite chaque lien depuis le document qui le contient.
 
 <!-- duplojs-agents-kit:coding-conventions:stop -->
+
