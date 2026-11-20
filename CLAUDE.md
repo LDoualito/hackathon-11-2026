@@ -72,6 +72,9 @@ Les scripts `build:02` à `build:10` doivent exister dans `package.json` (même 
    code **en ligne** (`if r.IsRight { … }`, boucle `for`, étapes séquentielles). Une closure Go
    n'est autorisée qu'en solution de repli, et doit être justifiée dans le README.
 6. **Cas non géré** : `context.error(node)`, jamais de `any` silencieux pour faire passer le build.
+   Exception documentée *(validée le 19/11)* : une union qui mélange un Either et une valeur qui n'en
+   est pas un (ex. résultat de `whenIsRight`, `Fail | readonly [number]`) devient `any`, faute de type
+   Go commun (`type/mixedEitherUnion.ts`). Toute autre union inconnue reste une erreur.
 8. **Runtime Go écrit à la main** *(validé le 18/11)* : le code Go commun qui n'est pas une traduction
    du TS (type `Either`, constructeurs, `Print`) est écrit dans de vrais fichiers `.go` rangés à côté
    du transformer qui l'utilise (ex. `duplojs/common/print/print.go`), déclarés dans le champ

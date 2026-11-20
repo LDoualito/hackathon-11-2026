@@ -8,6 +8,7 @@ import { type BuildContext } from "../../../context/build";
 import { expressionTransformers } from "../../expression";
 import { transformReturnTypeOfFunction } from "../../type/ofExpression";
 import { inlineCallback } from "../../common/inlineCallback";
+import { createSimpleAssignment } from "../../common";
 import { applyWhenIsRight } from "../either/whenIsRight";
 import { applyMap } from "../array/map";
 
@@ -152,13 +153,45 @@ export async function pipeExpressionHandler(
 
 		const { before: stepBefore, result } = DEither.unwrapRight(inlined);
 
-		const stepStatement = GoAST.createShortVariableDeclarationStatement({
+		if (stepBefore.length === 0) {
+			// Fonction passée par son nom : un simple appel, rien à isoler.
+			const stepStatement = GoAST.createShortVariableDeclarationStatement({
+				identifier: context.generateIdentifier(),
+				initializer: result,
+			});
+
+			before = [...before, stepStatement];
+			current = stepStatement.identifier;
+			continue;
+		}
+
+		// Fonction fléchée recopiée en ligne : ses variables (`Sourced_value := …`)
+		// vont dans un bloc `{ }` à part. Sans ça, deux étapes `(value) => …` dans le
+		// même pipe déclareraient deux fois `Sourced_value` et Go refuserait de compiler.
+		// Comme pour whenIsRight : on déclare le résultat avant le bloc, avec son type.
+		const stepType = await transformReturnTypeOfFunction(step, context);
+
+		if (DEither.isLeft(stepType)) {
+			return stepType;
+		}
+
+		const output = GoAST.createVariableDeclarationZeroValue({
 			identifier: context.generateIdentifier(),
-			initializer: result,
+			typeReference: stepType.result,
 		});
 
-		before = [...before, ...stepBefore, stepStatement];
-		current = stepStatement.identifier;
+		before = [
+			...before,
+			...stepType.before,
+			output,
+			GoAST.createBlockStatement({
+				statements: DArray.push(
+					stepBefore,
+					createSimpleAssignment(output.identifier, result),
+				),
+			}),
+		] as GoAST.Statement[];
+		current = output.identifier;
 	}
 
 	return context.success({

@@ -23,7 +23,7 @@ Comment traduire ça en Go en gardant les deux chemins (succès / échec), un vr
   projet 03 : c'est `pipe` qui lui donne le tableau.
 - **Problèmes de types découverts en route** (le transpileur refusait de traduire) :
   - la sortie de la 1ʳᵉ étape est typée par TS `readonly [number] | number[]` (tuple d'un côté, tableau de l'autre) ;
-  - `DString.to` renvoie `` `${number}` `` (un « template literal type ») ;
+  - `DString.to` renvoie, d'après `tsc`, `string & Number` : une chaîne avec une étiquette DuploJS ;
   - DuploJS colle des **étiquettes de type** avec `&` (ex. `string & Number`, ou `readonly T[] & …contraintes`) qui n'existent qu'à la compilation TS.
 
 **Solution**
@@ -59,7 +59,7 @@ Sourced_newResult := Generated_12
 - **Types** :
   - `array.ts` : `readonly X` → X (Go n'a pas de readonly), `T[]` → `[]T`, tuple dont tous les éléments ont le même type → `[]T` ;
   - `sameTypeUnion.ts` : une union dont tous les membres donnent **le même type Go** devient ce type. C'est pour ça qu'ici on obtient `[]float64` et **pas `any`** (contrairement au 02 où l'union mélangeait Either et tableau) ;
-  - `stringLiteral.ts` : `"abc"` ou `` `${number}` `` → `string` ;
+  - `stringLiteral.ts` : un type littéral (`"abc"`) ou un template literal type (`` `${number}` ``) → `string` ;
   - `brandedIntersection.ts` : dans un `A & B`, on ignore les étiquettes qui viennent de `@duplojs/lang` ; s'il reste exactement un type réel, on le traduit, sinon erreur.
 - **Littéraux de tableau** (`expression/arrayLiteral.ts`) : `[a, b]` → `[]T{a, b}`, avec T donné par le TypeChecker.
 
@@ -79,7 +79,12 @@ Sourced_newResult := Generated_12
 `./scripts/compare.sh 05` → sortie identique à Node :
 
 ```
-{ …right…, information: 'success', value: 3 … }
+{
+  '@duplojs/lang/kind/@DuplojsLangEither/right': null,
+  '@duplojs/lang/kind/@DuplojsLangEither/information': 'success',
+  '@duplojs/lang/kind/@DuplojsLangEither/value': 3,
+  '@duplojs/lang/kind/@DuplojsLangEither/success': null
+}
 [ '3' ]
 ```
 
@@ -92,7 +97,12 @@ Les exercices 00 à 07 passent tous avec ce changement (pas de régression).
   2 paramètres est refusé avec une erreur (aucun exercice ne s'en sert).
 - `map`, `whenIsRight`, `whenIsRightOtherwise` en forme curryfiée **hors d'un pipe** → erreur
   explicite (il faudrait une fonction anonyme).
-- `StringTo` gère `float64`, `string`, `bool` ; autre chose → panic avec un message clair.
+- *(corrigé après la revue)* `StringTo` est contraint à `float64 | string | bool` (interface
+  `Stringable`). Avant, il acceptait `any` type et paniquait à l'exécution sur un tableau ;
+  maintenant c'est le compilateur Go qui refuse : le contrat est vérifié à la compilation.
+- `brandedIntersection` ignore toutes les étiquettes venant de `@duplojs/lang`, y compris celles
+  qui portent un invariant (ex. `LengthEqual<1>` sur le résultat de `map`) : cet invariant n'est
+  pas conservé en Go (un slice n'a pas de longueur fixe dans son type).
 - Tuple avec des types différents (`[number, string]`) → erreur `tuple-with-different-element-types`.
 - Tableau vide : `var x []T` vaut `nil` en Go, mais `Print` l'affiche bien `[]` (vérifié).
 

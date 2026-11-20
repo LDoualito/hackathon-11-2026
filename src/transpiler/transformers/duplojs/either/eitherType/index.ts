@@ -135,7 +135,7 @@ function removeDuplicateGoTypes(goTypes: readonly GoType[]): readonly GoType[] {
  * en `shard_dependencies.Either[L, R]` :
  * - L = type des valeurs des variantes Left (Fail -> JSUndefined) ;
  * - R = type des valeurs des variantes Right (Success<number> -> float64) ;
- * - un côté sans aucune variante prend JSUndefined (0 octet, décision d'équipe n°2).
+ * - un côté sans aucune variante prend JSUndefined (0 octet, décision d'équipe n°1).
  * Si deux variantes d'un même côté ont des valeurs de types Go différents, un seul
  * L (ou R) ne suffit pas : erreur explicite, c'est une limite documentée.
  */

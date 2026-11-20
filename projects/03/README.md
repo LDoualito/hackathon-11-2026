@@ -76,8 +76,12 @@ Sortie Go identique à la sortie TS : **oui**. Les projets 00, 01, 02 et 04 pass
 **Limites**
 
 - Seules deux formes d’étapes sont reconnues : `whenIsRight(fonction)` et une fonction (fléchée ou
-  passée par son nom). Les autres fonctions DuploJS curryfiées (`DArray.map(f)`…) devront être
-  ajoutées de la même manière.
+  passée par son nom). `whenIsRightOtherwise(f, g)` et `DArray.map(f)` ont été
+  ajoutées ensuite de la même manière (projet 05).
+- *(corrigé après la revue)* Deux fonctions fléchées avec le même paramètre dans un même pipe
+  (`(v) => v + 1, (v) => v * 2`) déclaraient deux fois `Sourced_v` : Go refusait de compiler.
+  Chaque fonction fléchée est maintenant recopiée dans son propre bloc `{ }`, le résultat étant
+  déclaré avant avec son type (comme pour `whenIsRight`). Testé : sortie identique à Node.
 - `DCommon.pipe` passé comme valeur n’est pas géré.
 - Le type de chaque étape vient du checker : une étape dont le type de retour ne peut pas être
   calculé provoque une erreur explicite.

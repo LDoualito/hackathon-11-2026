@@ -4,6 +4,7 @@ import { GoAST } from "@go";
 import { createSharedDependency } from "@transformer";
 
 export const coalescingFunctionIdentifier = GoAST.createIdentifier("Coalescing");
+export const coalescingArrayFunctionIdentifier = GoAST.createIdentifier("CoalescingArray");
 
 /** Fonction Go de `DArray.coalescing`, écrite à la main dans coalescing.go (décision n°8). */
 export const coalescingDependency = DCommon.memo(

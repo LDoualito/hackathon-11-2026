@@ -60,9 +60,13 @@ Sourced_newResult := Generated_7
 Alternative étudiée puis écartée : une première version utilisait un Either à valeur `any`, une
 fonction Go `WhenIsRight(input any, f func(any) any) any` et des tableaux `[]any`. Elle fonctionnait
 (sortie de même valeur), mais mettait `any` partout, n’affichait pas comme Node et a été abandonnée
-au profit de l’Either typé de l’équipe. Le benchmark réalisé à cette occasion (création et lecture
-d’un Either à 2 variantes, `go test -bench`) donnait ~2,3 ns sans allocation pour une struct typée,
-~15 ns avec une interface et ~19 ns avec `any` (1 allocation).
+au profit de l’Either typé de l’équipe.
+
+Benchmark reproductible (`brouillons/benchmark-either`, `go test -bench . -benchmem -count 5`) :
+créer l’Either de `add(1, 2)` puis lire sa valeur coûte ~13 ns et **0 allocation** avec la struct
+de l’équipe, contre ~26 ns et **1 allocation** (8 octets) quand la valeur est rangée dans un champ
+`any`. Environ ×2 sur ce micro-benchmark : l’argument principal est l’allocation évitée et le type
+vérifié par le compilateur, pas la vitesse du programme entier (non mesurée).
 
 **Variations envisagées**
 
@@ -85,9 +89,11 @@ Sortie Go identique à la sortie TS : **oui**. Les projets 00 et 01 passent touj
 
 - `newResult` est un `any` : le compilateur Go ne vérifie plus son type, et la valeur est emballée
   (allocation possible).
-- `Coalescing` ne gère que les valeurs qui ne sont pas des tableaux. En TS, un tableau serait
-  renvoyé tel quel ; ici, le transformer ne peut pas le distinguer lorsqu’il reçoit la fonction par
-  son nom.
+- *(corrigé après la revue)* En TS, `coalescing` renvoie un tableau tel quel. La première version
+  l’enveloppait quand même (`[[1, 1]]` au lieu de `[1, 1]`). Le transformer lit maintenant le type
+  de la valeur que `coalescing` va recevoir (type « contextuel » donné par le TypeChecker) et
+  choisit `CoalescingArray` (renvoie tel quel) ou `Coalescing` (enveloppe). Testé : sortie identique
+  à Node avec `success([n, n])`.
 - Le tuple `readonly [number]` devient un slice `[]float64` : la longueur fixe et le `readonly`
   ne sont pas conservés (aucun code ne modifie le tableau).
 - `DEither.whenIsRight` passé comme valeur n’est pas géré.
@@ -95,4 +101,4 @@ Sortie Go identique à la sortie TS : **oui**. Les projets 00 et 01 passent touj
 **À vérifier**
 
 - Le coût de l’emballage dans `any` n’a pas été mesuré sur le Go généré, seulement dans le
-  micro-benchmark.
+  micro-benchmark (`brouillons/benchmark-either`).
