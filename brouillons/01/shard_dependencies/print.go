@@ -1,16 +1,5 @@
-// BROUILLON écrit à la main : fonction Print, partie de shard_dependencies.
-//
-// Print imite console.log de Node (util.inspect avec ses options par défaut :
-// breakLength 80, compact 3, depth 2, maxArrayLength 100) pour les types que le
-// transpileur manipule : float64, string, bool, JSNull, JSUndefined, tableaux
-// (slices / arrays Go) et Either. Objectif : sortie identique caractère par caractère.
-//
-// Print reçoit un `any` : c'est la frontière d'affichage, comme console.log qui est
-// lui-même dynamique. Le coût (interface + reflect pour les tableaux) ne concerne
-// que l'affichage, pas les calculs.
-//
-// Limites connues (assumées) : pas de maxStringLength (10 000 caractères),
-// pas de surrogates isolés (impossible dans une string Go valide).
+// BROUILLON : Print imite console.log de Node pour float64, string, bool,
+// JSNull, JSUndefined, tableaux et Either.
 package shard_dependencies
 
 import (

@@ -5,11 +5,7 @@ import { createSharedDependency } from "@transformer";
 
 export const leftFunctionIdentifier = GoAST.createIdentifier("EitherLeftOf");
 
-/**
- * Constructeur Go de `DEither.left`. Écrit à la main dans left.go (runtime)
- * et copié tel quel par le build. Il s'appuie sur le type Either : le handler
- * enregistre aussi `eitherDependency`.
- */
+/** Fonction Go de `DEither.left` (left.go). */
 export const eitherLeftDependency = DCommon.memo(
 	() => createSharedDependency({
 		imports: [],

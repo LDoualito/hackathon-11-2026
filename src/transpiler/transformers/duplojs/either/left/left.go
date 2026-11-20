@@ -1,14 +1,7 @@
-// Code Go écrit à la main (runtime), copié tel quel dans shard_dependencies
-// par le transpileur. Voir sharedDependency.ts à côté de ce fichier.
+// Runtime écrit à la main, copié tel quel dans shard_dependencies.
 package shard_dependencies
 
-// EitherLeftOf correspond à DEither.left(information, value).
-//
-// Même modèle que EitherSuccessOf et EitherFailOf : [L, R] écrits par le
-// transpileur à partir du type TS attendu.
-//
-// Kind reste "" : left() n'ajoute pas de 4e clé à l'affichage, contrairement
-// à fail() (« fail: null ») ou success() (« success: null »).
+// EitherLeftOf = DEither.left(information, value). Kind vide : pas de clé en plus à l'affichage.
 func EitherLeftOf[L any, R any](information string, value L) Either[L, R] {
 	return Either[L, R]{
 		IsRight:     false,

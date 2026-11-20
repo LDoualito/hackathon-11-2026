@@ -1,6 +1,4 @@
-// BROUILLON écrit à la main : Go attendu pour brouillons/variations-06/index.ts
-// (le vrai projects/06/index.ts a aussi besoin de whenIsRightOtherwise, DArray.map
-// et DString.to : exercice 05, autre chantier).
+// BROUILLON : Go attendu pour brouillons/variations-06/index.ts
 package Sourced_001bhome001bdoual001bDesktop001bhackaton001bprojects001b06001bindex001ats
 
 import (
@@ -29,10 +27,7 @@ func init() {
 	Generated_27 := Generated_23(Generated_24, Generated_26)
 	Generated_22(Generated_27)
 
-	// const message = DEither.matchInformation(failed, { "negative-operand": …, success: … });
-	// Pas de fonction anonyme (décision n°5) : un switch sur l'information, et
-	// le corps de chaque traitement est recopié dans son case.
-	// Le type du résultat vient du checker TS (string).
+	// const message = DEither.matchInformation(failed, { … }) : un switch, un case par traitement.
 	Generated_28 := Sourced_failed
 	var Generated_29 string
 	switch Generated_28.Information {
@@ -57,9 +52,7 @@ func init() {
 	//   "negative-operand": (operand) => operand * 10,
 	//   success: (value) => value * 2,
 	// });
-	// Le paramètre reçoit .Left ou .Right : le type TS dit de quel côté est chaque information.
-	// « _ = x » : en Go, une variable jamais lue est une erreur de compilation ;
-	// cette ligne dit « c'est voulu » (utile pour (value) => "texte").
+	// « _ = x » : Go refuse une variable jamais lue.
 	Generated_35 := Sourced_succeeded
 	var Generated_36 float64
 	switch Generated_35.Information {

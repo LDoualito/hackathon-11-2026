@@ -14,8 +14,7 @@ const result = add(1, 2);
 if (DEither.isRight(result)) DCommon.print(result);
 else DCommon.print(3);
 
-// else if dont la condition demande des préparations (un appel de fonction) :
-// elles doivent rester dans la branche else.
+// else if avec un appel dans sa condition : préparations dans le else.
 if (DEither.isRight(add(10, 20))) {
 	DCommon.print(add(10, 20));
 } else if (DEither.isRight(add(30, 40))) {

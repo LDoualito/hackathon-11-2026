@@ -1,5 +1,4 @@
-// Refusé : DEither.left sans valeur. Le build s'arrête sur le type Left<"negative", undefined>
-// (type `undefined` pas encore traduit : notfound-transformer), avant le contrôle des arguments.
+// Refusé : left sans valeur. Arrêt sur le type undefined (notfound-transformer).
 import * as DEither from "@duplojs/lang/either";
 
 export function check(value: number) {

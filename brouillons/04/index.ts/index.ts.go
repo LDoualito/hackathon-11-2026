@@ -1,5 +1,4 @@
-// BROUILLON écrit à la main : Go attendu pour brouillons/variations-04/index.ts
-// (le vrai projects/04/index.ts a besoin de pipe et whenIsRight : autre chantier).
+// BROUILLON : Go attendu pour brouillons/variations-04/index.ts
 package Sourced_001bhome001bdoual001bDesktop001bhackaton001bprojects001b04001bindex001ats
 
 import (

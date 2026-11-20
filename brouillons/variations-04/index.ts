@@ -1,5 +1,4 @@
-// Exercice 04, partie Either : tester add.ts sans pipe ni whenIsRight
-// (ces deux-là viennent des exercices 02-03, chantier d'une autre équipe).
+// Exercice 04, partie Either : add.ts sans pipe ni whenIsRight.
 import * as DEither from "@duplojs/lang/either";
 import * as DCommon from "@duplojs/lang/common";
 import { add } from "./add";

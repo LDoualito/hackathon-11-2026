@@ -9,12 +9,8 @@ import { expressionTransformers } from "../expression";
 import { createSimpleAssignment } from "./assignment";
 
 /**
- * `(value) => corps` ou `() => corps`, appliquée à `argument`.
- *
- *   Sourced_value := <argument>
- *   _ = Sourced_value              // Go refuse une variable jamais lue : « c'est voulu »
- *   ...préparations du corps
- *   -> résultat : corps
+ * `(x) => corps` recopiée en ligne : `x := argument`, puis le corps.
+ * `_ = x` car Go refuse une variable jamais lue.
  */
 async function inlineArrowFunction(
 	callback: TsAST.ArrowFunction,
@@ -22,7 +18,7 @@ async function inlineArrowFunction(
 	context: BuildContext,
 ) {
 	if (TsAST.isBlock(callback.body) || callback.parameters.length > 1) {
-		// Pour l'instant : `() => valeur` ou `(x) => valeur`.
+		// Seulement `() => valeur` et `(x) => valeur`.
 		return context.error(callback, "callback-not-supported-yet");
 	}
 
@@ -32,7 +28,7 @@ async function inlineArrowFunction(
 		parameter
 		&& (!TsAST.isIdentifier(parameter.name) || parameter.initializer || parameter.dotDotDotToken)
 	) {
-		// Déstructuration `([a, b]) =>`, valeur par défaut, `...reste` : pas encore gérés.
+		// Déstructuration, valeur par défaut, `...reste` : pas gérés.
 		return context.error(parameter, "callback-parameter-not-supported");
 	}
 
@@ -64,10 +60,7 @@ async function inlineArrowFunction(
 	});
 }
 
-/**
- * Fonction passée par son nom (`double`, `DString.to`…) : un simple appel,
- * `double(<argument>)`.
- */
+/** Fonction passée par son nom : un simple appel `f(argument)`. */
 async function inlineFunctionReference(
 	callback: TsAST.Identifier | TsAST.PropertyAccessExpression,
 	argument: GoAST.Expression,
@@ -81,8 +74,7 @@ async function inlineFunctionReference(
 	const [signature] = signatures;
 
 	if (!signature || signatures.length !== 1 || signature.parameters.length > 1) {
-		// Fonction surchargée, ou qui attend plusieurs paramètres : JS lui passerait
-		// une seule valeur, Go refuserait l'appel. Pas encore géré.
+		// Surcharge ou plusieurs paramètres : pas géré.
 		return context.error(callback, "callback-function-not-supported");
 	}
 
@@ -99,23 +91,15 @@ async function inlineFunctionReference(
 		before: callee.before,
 		result: GoAST.createCallExpression({
 			callee: callee.result,
-			// `() => 0` passée par son nom : JS ignore la valeur, Go ne doit pas la passer.
+			// Fonction sans paramètre : on ne lui passe rien.
 			arguments: signature.parameters.length === 1 ? [argument] : [],
 		}),
 	});
 }
 
 /**
- * Décision n°5 : une fonction passée en argument (à matchInformation,
- * rightPipe…) ne devient pas une fonction anonyme Go. Son code est recopié
- * « en ligne », appliqué à une valeur Go déjà connue (`argument`), par
- * exemple `Generated_1.Right`.
- *
- * Renvoie `{ before, result }`, comme un transformer d'expression : celui qui
- * l'appelle place `before` puis utilise `result`.
- *
- * Réutilisable pour whenIsRight, whenIsRightOtherwise, DArray.map… : toute
- * l'équipe génère ainsi le même Go pour les fonctions passées en argument.
+ * Décision n°5 : une fonction passée en argument est recopiée en ligne,
+ * pas changée en closure. Renvoie `{ before, result }`.
  */
 export function inlineCallback(
 	callback: TsAST.Expression,

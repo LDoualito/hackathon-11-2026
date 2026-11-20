@@ -7,17 +7,8 @@ import * as DEither from "@duplojs/lang/either";
 import * as DArray from "@duplojs/lang/array";
 
 /**
- * `-x` (moins unaire). Les autres opérateurs préfixes (`!`, `+`, `++`…) ne
- * sont pas gérés : ils tombent sur l'erreur « aucun transformer ».
- *
- * La valeur passe TOUJOURS par une variable avant le moins :
- *
- *   Generated_1 := (float64)(0)
- *   Generated_2 := -Generated_1
- *
- * Raison : en Go, une constante n'a pas de zéro négatif. `(float64)(-0)`
- * vaut +0, alors que `-0` en JS vaut -0 (et print affiche `-0`). Sur une
- * variable, le calcul se fait à l'exécution, en float64, comme en JS.
+ * `-x` seulement. Toujours appliqué à une variable : une constante Go n'a pas
+ * de zéro négatif (`-0` deviendrait `0`).
  */
 export const prefixUnaryExpressionTransformer: Transformer<GoAST.UnaryExpression> = createTransformer(
 	async(node, context) => {

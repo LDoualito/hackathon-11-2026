@@ -1,17 +1,8 @@
-// Code Go écrit à la main (runtime), copié tel quel dans shard_dependencies
-// par le transpileur. Voir sharedDependency.ts à côté de ce fichier.
+// Runtime écrit à la main, copié tel quel dans shard_dependencies.
 //
-// Print imite console.log de Node (util.inspect avec ses options par défaut :
-// breakLength 80, compact 3, depth 2, maxArrayLength 100) pour les types que le
-// transpileur manipule : float64, string, bool, JSNull, JSUndefined, tableaux
-// (slices / arrays Go) et Either. Objectif : sortie identique caractère par caractère.
-//
-// Print reçoit un `any` : c'est la frontière d'affichage, comme console.log qui est
-// lui-même dynamique. Le coût (interface + reflect pour les tableaux) ne concerne
-// que l'affichage, pas les calculs.
-//
-// Limites connues (assumées) : pas de maxStringLength (10 000 caractères),
-// pas de surrogates isolés (impossible dans une string Go valide).
+// Print imite console.log de Node pour float64, string, bool, JSNull,
+// JSUndefined, tableaux et Either. Limites : pas de maxStringLength,
+// pas de surrogate isolé.
 package shard_dependencies
 
 import (
@@ -34,7 +25,7 @@ const (
 func Print(value any) {
 	var text string
 	if s, ok := value.(string); ok {
-		// console.log affiche une chaîne de premier niveau telle quelle, sans guillemets.
+		// Chaîne de premier niveau : sans guillemets, comme console.log.
 		text = s
 	} else {
 		text = formatValue(&inspectContext{}, value, 0)
@@ -42,10 +33,7 @@ func Print(value any) {
 	os.Stdout.WriteString(text + "\n")
 }
 
-// jsObject : une valeur Go qui s'affiche comme un objet JS (Either par exemple).
-// Elle donne ses clés et ses valeurs dans l'ordre d'affichage.
-// Print ne connaît pas Either directement : il fonctionne aussi dans un
-// programme qui n'utilise pas Either.
+// jsObject : valeur Go affichée comme un objet JS (ex. Either).
 type jsObject interface {
 	jsEntries() ([]string, []any)
 }

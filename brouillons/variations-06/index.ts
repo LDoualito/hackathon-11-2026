@@ -1,11 +1,9 @@
-// Exercice 06, partie Either : add.ts (left, ternaire, ||) et matchInformation,
-// sans whenIsRightOtherwise, DArray.map ni DString.to (exercice 05, autre chantier).
+// Exercice 06, partie Either : left, ternaire, || et matchInformation.
 import * as DEither from "@duplojs/lang/either";
 import * as DCommon from "@duplojs/lang/common";
 import { add } from "./add";
 
-// Chemin échec : un Left « negative-operand » qui porte l'opérande négatif.
-// Pas de 4e clé à l'affichage (left() n'en ajoute pas, contrairement à fail()).
+// Échec : un Left « negative-operand » (pas de clé en plus, contrairement à fail()).
 const failed = add(-1, 2);
 DCommon.print(failed);
 
@@ -22,7 +20,7 @@ const message = DEither.matchInformation(
 );
 DCommon.print(message);
 
-// Les traitements reçoivent la valeur du bon côté : Left pour l'échec, Right pour le succès.
+// Chaque traitement reçoit la valeur du bon côté (Left ou Right).
 const succeeded = add(1, 2);
 const doubled = DEither.matchInformation(
 	succeeded,

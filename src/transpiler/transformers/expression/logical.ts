@@ -9,19 +9,8 @@ import { expressionTransformers } from ".";
 import { createSimpleAssignment } from "../common";
 
 /**
- * `a || b` et `a && b`. En JS, la partie droite n'est calculée que si elle
- * peut changer le résultat (« court-circuit »). On garde ce comportement :
- *
- *   Generated_1 := a
- *   if !Generated_1 {              // pour && : if Generated_1 {
- *       ...préparations de b
- *       Generated_1 = b
- *   }
- *
- * Sans ça, `isRight(x) || f()` appellerait f() même quand x est un succès.
- *
- * Les deux côtés doivent être des booléens TS : `a || 0` renvoie une valeur
- * non booléenne en JS (« truthiness »), sans équivalent direct en Go.
+ * `a || b` et `a && b`, avec court-circuit : b n'est calculé que si besoin.
+ * Les deux côtés doivent être des booléens.
  */
 export const logicalExpressionTransformer: Transformer<GoAST.Identifier> = createTransformer(
 	async(node, context) => {

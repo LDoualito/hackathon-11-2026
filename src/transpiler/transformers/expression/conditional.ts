@@ -10,17 +10,8 @@ import { transformTypeOfExpression } from "../type/ofExpression";
 import { createSimpleAssignment } from "../common";
 
 /**
- * Ternaire `condition ? a : b`. Go n'en a pas :
- *
- *   var Generated_1 float64        // type du ternaire, donné par le checker TS
- *   if condition {
- *       Generated_1 = a
- *   } else {
- *       Generated_1 = b
- *   }
- *
- * Les préparations (`before`) de chaque branche restent DANS sa branche :
- * seule la branche choisie est calculée, comme en JS.
+ * Ternaire (absent en Go) : `var r T` puis if/else.
+ * Chaque branche garde ses préparations : seule la branche choisie est calculée.
  */
 export const conditionalExpressionTransformer: Transformer<GoAST.Identifier> = createTransformer(
 	async(node, context) => {
@@ -31,7 +22,7 @@ export const conditionalExpressionTransformer: Transformer<GoAST.Identifier> = c
 		const conditionType = await context.transpilation.typeChecker.getTypeAtLocation(node.condition);
 
 		if (!(conditionType.flags & TypeFlags.BooleanLike)) {
-			// « truthiness » JS (`nombre ? a : b`) : pas d'équivalent direct en Go.
+			// Condition non booléenne : pas d'équivalent en Go.
 			return context.error(node.condition, "conditional-condition-is-not-boolean");
 		}
 

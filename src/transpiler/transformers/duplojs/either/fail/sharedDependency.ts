@@ -5,11 +5,7 @@ import { createSharedDependency } from "@transformer";
 
 export const failFunctionIdentifier = GoAST.createIdentifier("EitherFailOf");
 
-/**
- * Constructeur Go de `DEither.fail`. Écrit à la main dans fail.go (runtime)
- * et copié tel quel par le build. Il s'appuie sur le type Either : le handler
- * enregistre aussi `eitherDependency`.
- */
+/** Fonction Go de `DEither.fail` (fail.go). */
 export const eitherFailDependency = DCommon.memo(
 	() => createSharedDependency({
 		imports: [],

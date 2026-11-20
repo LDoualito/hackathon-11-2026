@@ -8,7 +8,7 @@ import { type BuildContext } from "../../../../context/build";
 import { typeTransformers } from "../../../type";
 import { eitherDependency, eitherTypeIdentifier, undefinedTypeIdentifier } from "../sharedDependency";
 
-/** Un membre d'une union TS déjà reconnu comme type Either de DuploJS par le routeur. */
+/** Un membre d'union reconnu comme type Either DuploJS. */
 export interface EitherTypeMember {
 	readonly node: TsAST.TypeReferenceNode | TsAST.ImportTypeNode;
 	readonly exportName: string;
@@ -16,12 +16,7 @@ export interface EitherTypeMember {
 
 type GoType = GoAST.Type | GoAST.TypeReference;
 
-/**
- * Reconnaît un type Either DuploJS : une variante seule (`DEither.Success<number>`)
- * ou une union dont TOUS les membres sont des variantes Either
- * (`DEither.Success<number> | DEither.Fail`). Fonctionne aussi sur les types
- * reconstruits par le checker (type de retour déduit, type attendu).
- */
+/** Reconnaît un type Either DuploJS : une variante seule ou une union de variantes. */
 export async function resolveEitherTypeMember(
 	member: TsAST.TypeNode,
 	context: BuildContext,
@@ -52,18 +47,14 @@ export async function resolveEitherTypeMember(
 export interface EitherMemberSide {
 	readonly side: "left" | "right";
 
-	/**
-	 * Information portée par la variante : "success", "fail", ou le premier
-	 * paramètre de `Left<"negative-operand", …>`. Undefined si le type ne la fixe
-	 * pas (ex. `Left<string, number>`).
-	 */
+	/** "success", "fail" ou l'information de Left ; undefined si le type ne la fixe pas. */
 	readonly information: string | undefined;
 
-	/** Type TS de la valeur ; undefined quand la valeur JS est `undefined`. */
+	/** Type TS de la valeur ; undefined si pas de valeur. */
 	readonly value: TsAST.TypeNode | undefined;
 }
 
-/** `"negative-operand"` (type littéral) -> negative-operand ; autre type -> undefined. */
+/** Type littéral `"x"` -> x ; sinon undefined. */
 function readLiteralInformation(typeNode: TsAST.TypeNode | undefined) {
 	if (
 		typeNode
@@ -76,10 +67,7 @@ function readLiteralInformation(typeNode: TsAST.TypeNode | undefined) {
 	return undefined;
 }
 
-/**
- * Côté (Left ou Right) et type de valeur de chaque type Either DuploJS pris en charge.
- * Un type absent de cette table produit une erreur explicite, jamais un `any`.
- */
+/** Côté et type de valeur de chaque type Either géré. Absent de la table : erreur. */
 export function describeEitherMember(member: EitherTypeMember): EitherMemberSide | undefined {
 	return DCommon.pipe(
 		member.exportName,
@@ -99,8 +87,7 @@ export function describeEitherMember(member: EitherTypeMember): EitherMemberSide
 				value: undefined,
 			}),
 		),
-		// Left<information, valeur>. `Left<"x">` écrit sans valeur veut dire
-		// « valeur de type unknown » : pas de type Go, donc pas dans la table.
+		// Left<information, valeur>. `Left<"x">` sans valeur : non géré.
 		DPattern.match(
 			DCommon.equal("Left"),
 			(): EitherMemberSide | undefined => {
@@ -131,13 +118,8 @@ function removeDuplicateGoTypes(goTypes: readonly GoType[]): readonly GoType[] {
 }
 
 /**
- * Traduit un type Either TypeScript (une variante seule ou une union de variantes)
- * en `shard_dependencies.Either[L, R]` :
- * - L = type des valeurs des variantes Left (Fail -> JSUndefined) ;
- * - R = type des valeurs des variantes Right (Success<number> -> float64) ;
- * - un côté sans aucune variante prend JSUndefined (0 octet, décision d'équipe n°1).
- * Si deux variantes d'un même côté ont des valeurs de types Go différents, un seul
- * L (ou R) ne suffit pas : erreur explicite, c'est une limite documentée.
+ * Type Either TS -> `Either[L, R]` : L = valeurs Left, R = valeurs Right,
+ * JSUndefined si un côté n'a pas de valeur. Deux types Go d'un même côté : erreur.
  */
 export async function eitherTypeHandler(
 	node: TsAST.TypeNode,

@@ -1,5 +1,4 @@
-// || et && : la partie droite n'est calculée que si elle peut changer le résultat.
-// isPositive affiche son argument : on voit donc quels appels ont lieu.
+// || et && : la droite n'est calculée que si besoin. isPositive affiche son argument.
 import * as DCommon from "@duplojs/lang/common";
 
 function isPositive(value: number) {

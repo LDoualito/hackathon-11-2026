@@ -10,10 +10,7 @@ export const eitherLeftFieldIdentifier = GoAST.createIdentifier("Left");
 export const eitherRightFieldIdentifier = GoAST.createIdentifier("Right");
 export const undefinedTypeIdentifier = GoAST.createIdentifier("JSUndefined");
 
-/**
- * Type Go `Either[L, R]` commun à toutes les opérations Either.
- * Écrit à la main dans either.go (runtime) et copié tel quel par le build.
- */
+/** Type Go `Either[L, R]` (either.go). */
 export const eitherDependency = DCommon.memo(
 	() => createSharedDependency({
 		imports: [],

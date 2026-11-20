@@ -1,5 +1,4 @@
-// Exercice 07, partie Either : rightPipe et matchInformation à trois informations,
-// sans whenIsRightOtherwise, DArray.map ni DString.to (exercice 05, autre chantier).
+// Exercice 07, partie Either : rightPipe et matchInformation à trois informations.
 import * as DEither from "@duplojs/lang/either";
 import * as DCommon from "@duplojs/lang/common";
 import { add } from "./add";

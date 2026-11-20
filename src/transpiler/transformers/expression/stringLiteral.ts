@@ -2,12 +2,7 @@ import { TsAST } from "@typescript";
 import { GoAST } from "@go";
 import { createTransformer, type Transformer } from "@transformer";
 
-/**
- * `"texte"` -> `"texte"`. Le printer ajoute les guillemets et les échappements Go.
- *
- * Une chaîne JS peut contenir une moitié de caractère isolée (« surrogate »
- * seul, ex. "\uD800") : impossible à écrire en UTF-8, donc erreur explicite.
- */
+/** `"texte"` -> `"texte"`. Surrogate isolé (ex. "\uD800") : erreur, pas d'UTF-8 possible. */
 export const stringLiteralTransformer: Transformer<GoAST.StringLiteral> = createTransformer(
 	(node, context) => {
 		if (!TsAST.isStringLiteral(node)) {

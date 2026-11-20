@@ -10,7 +10,7 @@ import { expressionTransformers } from "../expression";
 import { statementTransformers } from ".";
 import { blockStatementTransformer } from "./block";
 
-/** Une branche Go est toujours un bloc `{ ... }`, même si le TS écrit `if (x) f();`. */
+/** Une branche Go est toujours un bloc `{ … }`. */
 async function transformBranch(statement: TsAST.Statement, context: BuildContext) {
 	if (TsAST.isBlock(statement)) {
 		return DCommon.asyncPipe(
@@ -37,15 +37,8 @@ async function transformBranch(statement: TsAST.Statement, context: BuildContext
 }
 
 /**
- * `if (condition) { ... } else ...` -> `if condition { ... } else ...`.
- *
- * Les instructions de préparation de la condition (`before`) sont placées
- * juste avant le `if`. Pour un `else if`, elles doivent rester dans la branche
- * else (elles ne s'exécutent que si la première condition est fausse) : le
- * `else if` devient alors `else { préparations; if ... }`.
- *
- * La condition doit être un booléen TS : la « truthiness » JS (`if (nombre)`,
- * `if (texte)`) n'a pas d'équivalent direct en Go et produit une erreur explicite.
+ * if TS -> if Go. Les préparations d'un else if restent dans le else.
+ * La condition doit être un booléen.
  */
 export const ifStatementTransformer: Transformer<GoAST.IfStatement> = createTransformer(
 	async(node, context) => {
@@ -99,7 +92,7 @@ export const ifStatementTransformer: Transformer<GoAST.IfStatement> = createTran
 				result: GoAST.createIfStatement({
 					condition: condition.result,
 					body: body.result,
-					// Préparations de la condition du else if : uniquement dans la branche else.
+					// Préparations du else if : dans le else.
 					elseBranch: elseIf.before.length === 0
 						? elseIf.result
 						: GoAST.createBlockStatement({

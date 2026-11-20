@@ -12,7 +12,7 @@ import { createSimpleAssignment } from "../../../common";
 import { inlineCallback } from "../../../common/inlineCallback";
 import { eitherIsRightFieldIdentifier, eitherRightFieldIdentifier } from "../sharedDependency";
 
-/** Type Go calculé -> Either « erreur ou type Go », plus simple à filtrer. */
+/** Range le type Go dans un Either, pour filtrer les erreurs. */
 async function toGoTypeEither(
 	goType: ReturnType<typeof transformTypeOfExpression>,
 ) {
@@ -25,11 +25,7 @@ async function toGoTypeEither(
 	return DEither.right("go-type", resolved.result);
 }
 
-/**
- * Vérifie que l'entrée, chaque étape et le résultat ont le même type Go
- * (ex. `Either[float64, float64]`) : c'est ce qui permet de ranger chaque
- * étape dans la même variable. Vrai pour les exercices 07, 08 et 10.
- */
+/** Toutes les étapes doivent avoir le même type Go : elles partagent une variable. */
 async function checkSameEitherType(
 	node: TsAST.CallExpression,
 	input: TsAST.Expression,
@@ -64,8 +60,7 @@ async function checkSameEitherType(
 		|| !DModeling.hasTagValue(resultType, "[node]type-reference-generic")
 		|| DArray.some(rendered, (goType) => goType !== DArray.first(rendered))
 	) {
-		// Ex. une étape qui renvoie une valeur brute (pas un Either), ou un Either
-		// d'un autre type : il faudrait convertir. Limite documentée.
+		// Ex. une étape qui renvoie une valeur brute : limite documentée.
 		return context.error(node, {
 			reason: "either-right-pipe-types-differ",
 			types: rendered,
@@ -76,28 +71,15 @@ async function checkSameEitherType(
 }
 
 /**
- * `DEither.rightPipe(either, étape1, étape2, …)`.
- *
- * Pas de fonction anonyme (décision n°5). L'Either d'entrée est rangé dans une
- * variable (l'« accumulateur ») ; chaque étape devient UN `if` :
- *
- *   Generated_1 := either
- *   if Generated_1.IsRight {
- *       ...étape 1 recopiée (inlineCallback) avec Generated_1.Right
- *       Generated_1 = <résultat de l'étape 1>
- *   }
- *   if Generated_1.IsRight { ...étape 2… }
- *   -> résultat : Generated_1
- *
- * Dès qu'une étape renvoie un échec, les `if` suivants sont sautés et l'échec
- * est gardé, comme en TS.
+ * rightPipe : une variable, puis un `if acc.IsRight { … }` par étape.
+ * Après un échec, les étapes suivantes sont sautées, comme en TS.
  */
 export async function rightPipeExpressionHandler(
 	node: TsAST.Node,
 	context: BuildContext,
 ): Promise<ReturnType<Transformer<GoAST.Expression>["transformer"]>> {
 	if (!TsAST.isCallExpression(node)) {
-		// `DEither.rightPipe` passé comme valeur : non géré.
+		// Passé comme valeur : non géré.
 		return context.error(node, "either-right-pipe-used-as-value");
 	}
 

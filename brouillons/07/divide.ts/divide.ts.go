@@ -1,11 +1,9 @@
-// BROUILLON écrit à la main : Go attendu pour projects/07/divide.ts
+// BROUILLON : Go attendu pour projects/07/divide.ts
 package Sourced_001bhome001bdoual001bDesktop001bhackaton001bprojects001b07001bdivide001ats
 
 import "duplojs.local/transpiled/shard_dependencies"
 
-// Type déduit par TS : Left<"division-by-zero", 0> | Success<number>.
-// Après `divisor === 0`, TS sait que divisor vaut 0 : le type de la valeur
-// est le type LITTÉRAL 0. Go n'a pas de types littéraux : 0 -> float64.
+// Left<"division-by-zero", 0> | Success<number> -> Either[float64, float64]
 func Sourced_divide(Sourced_value float64, Sourced_divisor float64) (shard_dependencies.Either[float64, float64]) {
 	// if (divisor === 0)
 	Generated_1 := Sourced_divisor
@@ -17,9 +15,7 @@ func Sourced_divide(Sourced_value float64, Sourced_divisor float64) (shard_depen
 		Generated_5 := Sourced_divisor
 		return Generated_3(Generated_4, Generated_5)
 	}
-	// return DEither.success(value / divisor);
-	// Division sur des VARIABLES : Go calcule à l'exécution, comme JS (x / 0 = +Inf).
-	// Avec deux constantes, « 1 / 0 » ne compilerait même pas.
+	// return DEither.success(value / divisor);  (variables : x / 0 = +Inf, comme JS)
 	Generated_6 := shard_dependencies.EitherSuccessOf[float64, float64]
 	Generated_7 := Sourced_value
 	Generated_8 := Sourced_divisor

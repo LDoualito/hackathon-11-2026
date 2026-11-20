@@ -5,13 +5,7 @@ import { type BuildContext } from "../../context/build";
 import { SignatureKind } from "typescript/async";
 import { typeTransformers } from ".";
 
-/**
- * Type Go d'une expression TS, d'après le checker.
- *
- * Sert quand le Go doit déclarer une variable AVANT de la remplir
- * (`var Generated_1 float64`), par exemple pour un ternaire ou un
- * matchInformation : TS ne l'écrit pas, mais le checker le connaît.
- */
+/** Type Go d'une expression, d'après le checker (pour déclarer `var r T`). */
 export async function transformTypeOfExpression(
 	expression: TsAST.Expression,
 	context: BuildContext,
@@ -30,10 +24,7 @@ export async function transformTypeOfExpression(
 	);
 }
 
-/**
- * Type Go de ce que renvoie une fonction (écrite `(x) => …` ou passée par son
- * nom), d'après le checker. Ex. `(value) => divide(value, 0)` -> Either[float64, float64].
- */
+/** Type Go de ce que renvoie une fonction, d'après le checker. */
 export async function transformReturnTypeOfFunction(
 	expression: TsAST.Expression,
 	context: BuildContext,

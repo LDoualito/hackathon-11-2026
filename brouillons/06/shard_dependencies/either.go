@@ -1,18 +1,8 @@
-// Code Go écrit à la main (runtime), copié tel quel dans shard_dependencies
-// par le transpileur. Voir sharedDependency.ts à côté de ce fichier.
+// Runtime écrit à la main, copié tel quel dans shard_dependencies.
 package shard_dependencies
 
-// Either est la représentation Go d'un Either DuploJS : un seul struct,
-// passé par valeur (pas de pointeur, pas d'interface).
-//
-//	IsRight      true pour un Right (succès), false pour un Left (échec).
-//	Information  l'information DuploJS : "success", "fail", "division-by-zero"...
-//	Kind         le marqueur ajouté par success(), fail(), ok(), error()...
-//	             "" pour un Either créé par left() ou right().
-//	Left, Right  la valeur ; seul le champ du côté actif est significatif.
-//
-// Kind est nécessaire pour reproduire l'affichage de Node : DEither.success(3)
-// affiche une clé « success: null » que DEither.right("success", 3) n'a pas.
+// Either : un seul struct, passé par valeur. Seul Left ou Right compte, selon IsRight.
+// Kind ("success", "fail"… ou "" pour left/right) sert seulement à l'affichage.
 type Either[L any, R any] struct {
 	IsRight     bool
 	Information string
@@ -23,9 +13,7 @@ type Either[L any, R any] struct {
 
 const eitherKindPrefix = "@duplojs/lang/kind/@DuplojsLangEither/"
 
-// jsEntries donne les clés et les valeurs de l'objet JS équivalent,
-// dans l'ordre où DuploJS les crée (et donc où Node les affiche) :
-// right|left, information, value, puis le marqueur s'il existe.
+// jsEntries : clés et valeurs de l'objet JS, dans l'ordre d'affichage de Node.
 func (either Either[L, R]) jsEntries() ([]string, []any) {
 	keys := make([]string, 0, 4)
 	values := make([]any, 0, 4)

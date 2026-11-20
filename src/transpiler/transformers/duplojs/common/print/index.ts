@@ -7,14 +7,8 @@ import { callExpressionTransformer } from "../../../shared";
 import { printDependency, printFunctionIdentifier } from "./sharedDependency";
 
 /**
- * `DCommon.print(value)` devient `shard_dependencies.Print(value)`.
- *
- * L'appel passe par le transformer d'appel commun. Print reçoit un `any` :
- * c'est la frontière d'affichage, comme console.log qui est dynamique.
- * Formes refusées explicitement (limites) :
- * - print utilisé comme valeur (`const x = DCommon.print(y)`) : en TS il renvoie
- *   son argument, la fonction Go ne renvoie rien ;
- * - le second paramètre (`"warn"`, `{ depth }`, `{ columns }`).
+ * `DCommon.print(value)` -> `shard_dependencies.Print(value)`.
+ * Refusés : print utilisé comme valeur, second paramètre.
  */
 export function printExpressionHandler(
 	node: TsAST.Node,

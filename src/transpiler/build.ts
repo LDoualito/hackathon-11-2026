@@ -107,7 +107,7 @@ export function build(
 					createFile,
 				);
 
-				// Fichiers Go écrits à la main (runtime), copiés tels quels à côté du fichier généré.
+				// Runtime Go écrit à la main, copié tel quel.
 				const goFiles = await DCommon.asyncPipe(
 					[...context.sharedDependencies],
 					DArray.flatMap((sharedDependency) => sharedDependency.goFiles),

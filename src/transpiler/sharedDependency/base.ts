@@ -3,11 +3,7 @@ import type * as DPath from "@duplojs/lang/path";
 import { GoAST } from "@go";
 import { goModulePath } from "../sourcePackage";
 
-/**
- * Fichier Go écrit à la main, copié tel quel dans le package shard_dependencies.
- * Réservé au code d'exécution commun (runtime) : types Either, Print...
- * Le code traduit depuis le TypeScript passe toujours par l'AST Go.
- */
+/** Fichier Go écrit à la main (runtime), copié tel quel dans shard_dependencies. */
 export interface SharedDependencyGoFile {
 	readonly fileName: string;
 	readonly sourcePath: string & DPath.Absolute;

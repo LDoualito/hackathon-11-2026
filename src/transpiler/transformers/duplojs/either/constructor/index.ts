@@ -10,31 +10,18 @@ import { typeTransformers } from "../../../type";
 import { getExpectedEitherType } from "../expectedType";
 import { eitherDependency } from "../sharedDependency";
 
-/**
- * Un constructeur d'Either DuploJS (`success`, `fail`…) et sa fonction Go.
- * La fonction Go est écrite à la main dans un fichier .go (décision n°8),
- * déclaré par `dependency`.
- */
+/** Un constructeur DuploJS (success, fail, left) et sa fonction Go. */
 export interface EitherConstructor {
 	readonly functionIdentifier: GoAST.Identifier;
 	readonly dependency: SharedDependency;
 
-	/** Nombre d'arguments attendu par la fonction Go (success : 1, fail : 0, left : 2). */
+	/** success : 1, fail : 0, left : 2. */
 	readonly argumentCount: number;
 }
 
 /**
- * `DEither.success(value)`, `DEither.fail()`… : tous les constructeurs suivent
- * la même recette.
- *
- * L'appel lui-même passe par le transformer d'appel commun (évaluation de la
- * fonction puis des arguments). Quand ce dernier traduit la référence
- * (`DEither.success`), on renvoie la fonction Go générique déjà instanciée :
- *
- *   Generated_N := shard_dependencies.EitherSuccessOf[shard_dependencies.JSUndefined, float64]
- *
- * Sans `[L, R]`, Go refuse de ranger une fonction générique dans une variable
- * (erreur du projet 00). L et R viennent du type TS attendu pour cet Either.
+ * success, fail, left : même recette. Renvoie la fonction Go instanciée avec
+ * [L, R], sinon Go refuse de la ranger dans une variable.
  */
 export async function eitherConstructorExpressionHandler(
 	node: TsAST.Node,
@@ -48,12 +35,12 @@ export async function eitherConstructorExpressionHandler(
 	const call = node.parent;
 
 	if (!call || !TsAST.isCallExpression(call) || call.expression !== node) {
-		// Constructeur passé comme valeur (par exemple à DCommon.pipe) : non géré pour l'instant.
+		// Passé comme valeur : non géré.
 		return context.error(node, "either-constructor-used-as-value");
 	}
 
 	if (call.arguments.length !== constructor.argumentCount) {
-		// Ex. `DEither.left("x")` sans valeur : la fonction Go attend toujours 2 arguments.
+		// Ex. `left("x")` sans valeur.
 		return context.error(call, "either-constructor-arguments-not-supported");
 	}
 

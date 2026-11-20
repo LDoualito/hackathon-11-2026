@@ -12,11 +12,7 @@ import { eitherInformationFieldIdentifier, eitherLeftFieldIdentifier, eitherRigh
 import { createSimpleAssignment } from "../../../common";
 import { inlineCallback } from "../../../common/inlineCallback";
 
-/**
- * Côté (Left ou Right) de chaque information possible de l'Either, lu dans
- * son type TS. Ex. `Left<"negative-operand", number> | Success<number>`
- * -> negative-operand : left, success : right.
- */
+/** Côté (left ou right) de chaque information, lu dans le type TS. */
 async function getInformationSides(
 	input: TsAST.Expression,
 	context: BuildContext,
@@ -47,42 +43,21 @@ async function getInformationSides(
 	);
 
 	if (sides.length !== members.length) {
-		// Pas un Either, variante inconnue, ou information non fixée par le type.
+		// Pas un Either, ou information inconnue.
 		return context.error(input, "either-match-information-input-not-supported");
 	}
 
 	return DEither.right("information-sides", sides);
 }
 
-/** Ce que tous les `case` partagent. */
+/** Ce que tous les case partagent. */
 interface MatchSwitch {
-
-	/** Variable Go qui contient l'Either testé (`Generated_1`). */
 	readonly either: GoAST.Identifier;
-
-	/** Variable Go qui reçoit le résultat (`Generated_2`). */
 	readonly result: GoAST.Identifier;
-
-	/** Côté (Left/Right) de chaque information possible. */
 	readonly sides: readonly EitherMemberSide[];
 }
 
-/**
- * Un traitement du matcher -> un `case` du switch.
- *
- *   "negative-operand": (value) => value * 10
- *
- * devient
- *
- *   case "negative-operand":
- *       Sourced_value := Generated_1.Left
- *       _ = Sourced_value
- *       ...préparations du corps
- *       Generated_2 = <corps>
- *
- * Le traitement est recopié par `inlineCallback` (common/inlineCallback.ts),
- * qui gère aussi une fonction passée par son nom (`success: double`).
- */
+/** Un traitement du matcher devient un case du switch. */
 async function transformMatchCase(
 	property: TsAST.ObjectLiteralElementLike,
 	{ either, result, sides }: MatchSwitch,
@@ -100,16 +75,16 @@ async function transformMatchCase(
 	const [firstSide] = sidesOfInformation;
 
 	if (!firstSide) {
-		// TS l'interdit déjà (clé en trop dans le matcher).
+		// Clé en trop : TS l'interdit déjà.
 		return context.error(property, "either-match-information-unknown-information");
 	}
 
 	if (DArray.some(sidesOfInformation, (side) => side.side !== firstSide.side)) {
-		// Même information à gauche ET à droite : la valeur n'aurait pas un seul type Go.
+		// Information des deux côtés : pas un seul type Go.
 		return context.error(property, "either-match-information-information-on-both-sides");
 	}
 
-	// Le traitement reçoit la valeur du bon côté de l'Either (.Left ou .Right).
+	// La valeur est lue dans .Left ou .Right.
 	const handler = await inlineCallback(
 		property.initializer,
 		GoAST.createSelectorExpression({
@@ -140,38 +115,22 @@ async function transformMatchCase(
 }
 
 /**
- * `DEither.matchInformation(either, { information: (value) => ..., ... })`.
- *
- * Pas de fonction anonyme en Go (décision n°5) : un `switch` sur l'information,
- * et le corps de chaque traitement est recopié dans son `case` :
- *
- *   Generated_1 := either
- *   var Generated_2 string            // type du résultat, donné par le checker TS
- *   switch Generated_1.Information {
- *   case "negative-operand":
- *       Generated_2 = "un opérande est négatif"
- *   case "success":
- *       Sourced_value := Generated_1.Right
- *       _ = Sourced_value
- *       Generated_2 = ...
- *   }
- *
- * TypeScript oblige à traiter toutes les informations possibles, et seulement
- * elles : pas besoin de `default`.
+ * matchInformation : un switch sur l'information, un case par traitement.
+ * Pas de default : TS oblige déjà à tout traiter.
  */
 export async function matchInformationExpressionHandler(
 	node: TsAST.Node,
 	context: BuildContext,
 ): Promise<ReturnType<Transformer<GoAST.Expression>["transformer"]>> {
 	if (!TsAST.isCallExpression(node)) {
-		// `DEither.matchInformation` passé comme valeur : non géré.
+		// Passé comme valeur : non géré.
 		return context.error(node, "either-match-information-used-as-value");
 	}
 
 	const [input, matcher] = node.arguments;
 
 	if (!input || !matcher || node.arguments.length !== 2) {
-		// Forme courte `matchInformation(matcher)` (pour un pipe) : pas encore gérée.
+		// Forme courte (pour un pipe) : pas encore gérée.
 		return context.error(node, "either-match-information-expects-two-arguments");
 	}
 

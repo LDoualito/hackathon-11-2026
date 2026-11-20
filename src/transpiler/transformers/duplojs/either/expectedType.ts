@@ -27,16 +27,9 @@ function findEnclosingFunction(node: TsAST.Node | undefined): EnclosingFunction 
 }
 
 /**
- * Type TypeScript attendu pour un Either construit par `expression`.
- *
- * En Go, `Either[A, B]` et `Either[C, D]` sont deux types différents, sans
- * conversion automatique : la valeur doit être construite directement avec le
- * type de l'endroit où elle va.
- * - `return DEither.success(...)` : type de retour de la fonction englobante
- *   (déclaré ou déduit par TypeScript), c'est-à-dire celui de la signature Go.
- *   Le checker ne donne pas de type contextuel quand la fonction n'a pas de
- *   type de retour écrit (exercice 04), d'où ce cas particulier.
- * - Sinon : le type attendu par le contexte, ou à défaut le type de l'expression.
+ * Type attendu pour un Either : Go ne convertit pas `Either[A, B]` en
+ * `Either[C, D]`, il faut le construire directement avec le bon type.
+ * Pour un return : le type de retour de la fonction.
  */
 export async function getExpectedEitherType(
 	expression: TsAST.Expression,

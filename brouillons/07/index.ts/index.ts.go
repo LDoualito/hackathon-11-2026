@@ -1,6 +1,4 @@
-// BROUILLON écrit à la main : Go attendu pour brouillons/variations-07/index.ts
-// (le vrai projects/07/index.ts a aussi besoin de pipe, whenIsRightOtherwise,
-// DArray.map et DString.to : exercices 02 à 05, autres chantiers).
+// BROUILLON : Go attendu pour brouillons/variations-07/index.ts
 package Sourced_001bhome001bdoual001bDesktop001bhackaton001bprojects001b07001bindex001ats
 
 import (
@@ -18,12 +16,7 @@ func Sourced_double(Sourced_value float64) (float64) {
 
 func init() {
 	// const result = DEither.rightPipe(add(1, 2), (value) => divide(value, 0));
-	//
-	// Pas de fonction anonyme (décision n°5). L'Either d'entrée est rangé dans
-	// une variable (l'« accumulateur ») ; chaque étape devient UN if :
-	// « si c'est encore un succès, calcule l'étape suivante avec sa valeur ».
-	// Dès qu'une étape renvoie un échec, les if suivants sont sautés et l'échec
-	// est gardé, comme en TS.
+	// Un if par étape : après un échec, les étapes suivantes sont sautées.
 	Generated_1 := Sourced_001bhome001bdoual001bDesktop001bhackaton001bprojects001b07001badd001ats.Sourced_add
 	Generated_2 := (float64)(1)
 	Generated_3 := (float64)(2)
@@ -95,7 +88,7 @@ func init() {
 		Generated_31 := (float64)(1)
 		Generated_30 = -(Generated_31)
 	case "success":
-		// Traitement passé par son nom : un simple appel avec la valeur.
+		// Passé par son nom : un simple appel.
 		Generated_30 = Sourced_double(Generated_29.Right)
 	}
 	Sourced_code := Generated_30

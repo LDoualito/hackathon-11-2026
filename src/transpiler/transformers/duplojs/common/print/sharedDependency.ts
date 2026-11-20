@@ -5,12 +5,7 @@ import { createSharedDependency } from "@transformer";
 
 export const printFunctionIdentifier = GoAST.createIdentifier("Print");
 
-/**
- * Fonction Go `Print`, équivalent de console.log de Node.
- * Écrite à la main dans print.go (runtime) et copiée telle quelle par le build :
- * environ 300 lignes de Go qu'il serait illisible de reconstruire avec les
- * factories de l'AST (décision d'équipe n°3).
- */
+/** Fonction Go `Print` (print.go), équivalent de console.log. */
 export const printDependency = DCommon.memo(
 	() => createSharedDependency({
 		imports: [],
